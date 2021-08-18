@@ -33,15 +33,6 @@
   NSRect _dockRect;
 }
 
-- (instancetype) init
-{
-  return [super initWothContentRect: _dockRect
-                          styleMask: NSWindowStyleMaskBorderless 
-                            backing: NSBackintStoreBuffered
-                              defer: NO
-                             screen: [NSScreen mainScreen]];
-}
-
 @end
 
 #endif // _DOCKWINDOW_H_

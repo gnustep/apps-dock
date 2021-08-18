@@ -23,18 +23,33 @@
 */
 
 #import "DockWindow.h"
+#import <AppKit/NSScreen.h>
+#import <AppKit/NSWindow.h>
 
 @implementation DockWindow
 
-- (instancetype) init
+- (instancetype) initWithContentRect: (NSRect)r
+                           styleMask: (NSUInteger)styleMask
+                             backing: (NSBackingStoreType)b
+                               defer: (BOOL)flag
 {
-  return [super initWothContentRect: _dockRect
-                          styleMask: NSWindowStyleMaskBorderless 
-                            backing: NSBackintStoreBuffered
-                              defer: NO
-                             screen: [NSScreen mainScreen]];
-}
+  NSScreen *s = [NSScreen mainScreen];
+  NSRect f = [s frame];
+  CGFloat screen_height = f.size.height;
+  CGFloat screen_width = f.size.width;
+  CGFloat w = 64.0, h = screen_height;
+  CGFloat x = screen_width - 64.0;
+  CGFloat y = screen_height;
 
-@end
+  _dockRect = NSMakeRect(x,y,w,h);
+  
+  NSLog(@"_dockRect = %@", NSStringFromRect(_dockRect));
+  id d = [super initWithContentRect: _dockRect
+                          styleMask: NSWindowStyleMaskBorderless 
+                            backing: b
+                              defer: flag];
+  NSLog(@"d = %@", d);
+  return d;
+}
 
 @end

@@ -30,14 +30,14 @@
 
 - (void) _createDockWindow
 {
-  
+  _dockWindow = [[DockWindow alloc] init];
+  [_dockWindow orderFrontRegardless];
 }
 
 - (id) init
 {
   if ((self = [super init]))
     {
-      [self _createDockWindow];
     }
   return self;
 }
