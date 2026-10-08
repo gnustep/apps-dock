@@ -60,6 +60,7 @@ typedef enum
   DockView *_dockView;
   void *_display;
   unsigned long _hostWindow;
+  NSRect _hostWindowFrame;
   NSMutableSet *_knownWindows;
   NSConnection *_iconConnection;
   NSMutableDictionary *_iconWindowsByProcessID;
@@ -67,6 +68,10 @@ typedef enum
   NSMutableDictionary *_dockedWindowFrames;
   NSMutableSet *_dockAppWindows;
   BOOL _hidesMiniwindows;
+  NSArray *_scanWindows;
+  NSUInteger _scanWindowIndex;
+  NSUInteger _scanIconWindowCount;
+  BOOL _scanDiscoveringIcons;
   BOOL _scanPending;
   NSTimeInterval _lastEventScanTime;
 }

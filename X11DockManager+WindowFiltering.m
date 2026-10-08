@@ -308,6 +308,14 @@
     {
       return NO;
     }
+  if ([self windowHasGNUstepMiniWindowStyle:window])
+    {
+      if (_hidesMiniwindows)
+        {
+          [self unmapIconWindow:window];
+        }
+      return NO;
+    }
   if ([self windowIsRegisteredIconWindow:window])
     {
       return NO;
@@ -538,30 +546,31 @@
 }
 
 
+- (void) scanKnownWindow: (Window)window
+{
+  NSNumber *key = [NSNumber numberWithUnsignedLong:window];
+
+  if (![self knownWindowStillExists:window])
+    {
+      [_knownWindows removeObject:key];
+      return;
+    }
+  if ([_delegate respondsToSelector:
+                   @selector(x11DockManagerDidUpdateWindow:hidden:icon:)])
+    {
+      [_delegate x11DockManagerDidUpdateWindow:(unsigned long)window
+                                      hidden:[self windowIsHidden:window]
+                                        icon:nil];
+    }
+}
+
 - (void) scanKnownWindows
 {
   NSArray *windows = [_knownWindows allObjects];
   NSUInteger i;
 
   for (i = 0; i < [windows count]; i++)
-    {
-      NSNumber *key = [windows objectAtIndex:i];
-      Window window = (Window)[key unsignedLongValue];
-
-      if (![self knownWindowStillExists:window])
-	{
-	  [_knownWindows removeObject:key];
-	  continue;
-	}
-
-      if ([_delegate respondsToSelector:
-		       @selector(x11DockManagerDidUpdateWindow:hidden:icon:)])
-	{
-	  [_delegate x11DockManagerDidUpdateWindow: (unsigned long)window
-					    hidden:[self windowIsHidden:window]
-					      icon:nil];
-	}
-    }
+    [self scanKnownWindow:(Window)[[windows objectAtIndex:i] unsignedLongValue]];
 }
 
 

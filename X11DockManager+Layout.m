@@ -141,9 +141,9 @@
     }
 
   XShapeCombineRectangles(display, (Window)_hostWindow, ShapeBounding,
-			  0, 0, rectangles, (int)count, ShapeSet, YXBanded);
+			  0, 0, rectangles, (int)count, ShapeSet, Unsorted);
   XShapeCombineRectangles(display, (Window)_hostWindow, ShapeInput,
-			  0, 0, rectangles, (int)count, ShapeSet, YXBanded);
+			  0, 0, rectangles, (int)count, ShapeSet, Unsorted);
   if (rectangles)
     {
       free(rectangles);
@@ -161,6 +161,12 @@
   int y;
 
   if (!display || !_hostWindow) return;
+  if ([_dockedWindowFrames objectForKey:
+         [NSNumber numberWithUnsignedLong:xWindow]])
+    {
+      [self moveDockedWindow:xWindow toIndex:index];
+      return;
+    }
   if (![self windowIsRegisteredIconWindow:(Window)xWindow] &&
       ![self windowIsKnownDockAppWindow:(Window)xWindow] &&
       ![self windowLooksLikeWindowMakerDockApp:(Window)xWindow])
@@ -196,6 +202,11 @@
   cellSize = [_dockView cellSize];
   x = (int)origin.x;
   y = (int)(NSHeight([_dockView bounds]) - origin.y - cellSize.height);
+  NSValue *previous = [_dockedWindowFrames objectForKey:
+                         [NSNumber numberWithUnsignedLong:xWindow]];
+  if (previous && NSEqualRects([previous rectValue],
+                              NSMakeRect(x, y, cellSize.width, cellSize.height)))
+    return;
   [_dockedWindowFrames setObject:[NSValue valueWithRect:NSMakeRect(x, y, cellSize.width, cellSize.height)]
 			   forKey:[NSNumber numberWithUnsignedLong:xWindow]];
   [self updateHostWindowShape];

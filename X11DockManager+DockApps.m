@@ -133,6 +133,12 @@
       return;
     }
 
+  /* Every suppression path must honor the preference, including fallbacks. */
+  if ([self windowHasGNUstepMiniWindowStyle:window] && !_hidesMiniwindows)
+    {
+      return;
+    }
+
   root = RootWindow(display, DefaultScreen(display));
   moveWindow = window;
 
@@ -176,10 +182,124 @@
       return;
     }
 
+  if ([self windowHasGNUstepMiniWindowStyle:window])
+    {
+      XWindowAttributes attr;
+      [self clearX11Error];
+      if (!XGetWindowAttributes(display, moveWindow, &attr) ||
+          [self x11ErrorOccurred] || attr.map_state == IsUnmapped)
+        {
+          return;
+        }
+    }
   XUnmapWindow(display, moveWindow);
   XFlush(display);
 }
 
+
+- (void) suppressMiniwindowsUnderWindow: (Window)parent
+{
+  Display *display = (Display *)_display;
+  Window root, ancestor, *children = NULL;
+  unsigned int count = 0, i;
+
+  /* Miniwindows can live inside WM frames and be absent from the client list. */
+  if (XQueryTree(display, parent, &root, &ancestor, &children, &count))
+    {
+      for (i = 0; i < count; i++)
+        {
+          if ([self windowHasGNUstepMiniWindowStyle:children[i]])
+            {
+              [self unmapIconWindow:children[i]];
+            }
+          else if (children[i] != (Window)_hostWindow)
+            {
+              [self suppressMiniwindowsUnderWindow:children[i]];
+            }
+        }
+    }
+  if (children) XFree(children);
+}
+
+/* Find the owning document, including withdrawn clients outside _NET_CLIENT_LIST.
+ * Do not resurrect a miniwindow whose document has since been restored/closed. */
+- (BOOL) miniwindowHasMinimizedOwner: (Window)miniwindow under: (Window)parent
+{
+  Display *display = (Display *)_display;
+  Window root, ancestor, *children = NULL;
+  unsigned int count = 0, i;
+  BOOL found = NO;
+
+  [self clearX11Error];
+  if (!XQueryTree(display, parent, &root, &ancestor, &children, &count) ||
+      [self x11ErrorOccurred])
+    {
+      if (children) XFree(children);
+      return NO;
+    }
+  for (i = 0; i < count && !found; i++)
+    {
+      XWMHints *hints = XGetWMHints(display, children[i]);
+      if (hints)
+        {
+          if ((hints->flags & IconWindowHint) &&
+              hints->icon_window == miniwindow && children[i] != miniwindow)
+            {
+              XWindowAttributes attr;
+              long state = WithdrawnState;
+              [self wmStateForWindow:children[i] state:&state];
+              found = XGetWindowAttributes(display, children[i], &attr) &&
+                attr.map_state != IsViewable && state != NormalState;
+            }
+          XFree(hints);
+        }
+      if (!found)
+        {
+          found = [self miniwindowHasMinimizedOwner:miniwindow under:children[i]];
+        }
+    }
+  if (children) XFree(children);
+  return found;
+}
+
+- (BOOL) restoreMiniwindowsUnderWindow: (Window)window
+{
+  Display *display = (Display *)_display;
+  Window root, parent, *children = NULL;
+  unsigned int count = 0, i;
+  BOOL restored = NO;
+
+  if (window == (Window)_hostWindow)
+    return NO;
+
+  if ([self windowHasGNUstepMiniWindowStyle:window])
+    {
+      restored = [self miniwindowHasMinimizedOwner:window
+                                             under:DefaultRootWindow(display)];
+    }
+  else if (XQueryTree(display, window, &root, &parent, &children, &count))
+    {
+      for (i = 0; i < count; i++)
+        {
+          if ([self restoreMiniwindowsUnderWindow:children[i]])
+            restored = YES;
+        }
+    }
+  if (children) XFree(children);
+
+  /* Map the icon and its current ancestors, not a possibly obsolete WM frame.
+   * Walking the tree also recovers icons hidden by an earlier DockWM session. */
+  if (restored && window != DefaultRootWindow(display))
+    XMapWindow(display, window);
+  return restored;
+}
+
+- (void) restoreSuppressedMiniwindows
+{
+  Display *display = (Display *)_display;
+  [self restoreMiniwindowsUnderWindow:DefaultRootWindow(display)];
+  XFlush(display);
+}
 
 - (void) hideApplicationIconWindow: (Window)window
 {
@@ -297,7 +417,8 @@
     {
       return NO;
     }
-  if (![self windowHasGNUstepIconStyle:window])
+  if ([self windowHasGNUstepMiniWindowStyle:window] ||
+      ![self windowHasGNUstepIconStyle:window])
     {
       return NO;
     }
@@ -498,42 +619,101 @@
 }
 
 
+/* Snapshot once, then yield between small batches of synchronous X queries.
+ * Keep icon discovery ahead of client classification, as in the full scan. */
 - (void) scanForDockApps
 {
   Display *display = (Display *)_display;
   Window root, parent, *children = NULL;
   unsigned int count = 0, i;
-  NSArray *clientWindows;
+  NSMutableArray *windows;
+  NSMutableSet *seen;
+  NSArray *additionalWindows;
 
   if (!display) return;
+  if (_scanWindows != nil)
+    {
+      /* Coalesce a refresh requested during a scan; never restart its cursor. */
+      _scanPending = YES;
+      return;
+    }
   _scanPending = NO;
   _lastEventScanTime = [NSDate timeIntervalSinceReferenceDate];
   [self scanApplicationIconWindows];
-  [self scanKnownWindows];
-
-  clientWindows = [self clientListWindows];
-  for (i = 0; i < [clientWindows count]; i++)
-    {
-      [self scanClientWindow:
-	      (Window)[[clientWindows objectAtIndex:i] unsignedLongValue]];
-    }
-
+  windows = [NSMutableArray array];
+  seen = [NSMutableSet set];
   root = RootWindow(display, DefaultScreen(display));
-  if (!XQueryTree(display, root, &root, &parent, &children, &count))
+  if (XQueryTree(display, root, &root, &parent, &children, &count))
     {
-      return;
+      for (i = 0; i < count; i++)
+        {
+          NSNumber *key = [NSNumber numberWithUnsignedLong:children[i]];
+          [windows addObject:key];
+          [seen addObject:key];
+        }
     }
-
-  [self discoverApplicationIconWindows:children count:count];
-  [self scanApplicationIconWindows];
-
-  for (i = 0; i < count; i++)
-    {
-      [self scanClientWindow:children[i]];
-    }
-
   if (children) XFree(children);
+  _scanIconWindowCount = [windows count];
+  additionalWindows = [[self clientListWindows]
+    arrayByAddingObjectsFromArray:[_knownWindows allObjects]];
+  for (i = 0; i < [additionalWindows count]; i++)
+    {
+      id key = [additionalWindows objectAtIndex:i];
+      if (![seen containsObject:key])
+        {
+          [windows addObject:key];
+          [seen addObject:key];
+        }
+    }
+  _scanWindows = [windows copy];
+  _scanWindowIndex = 0;
+  _scanDiscoveringIcons = YES;
+  [self continueWindowScan];
 }
 
+- (void) continueWindowScan
+{
+  NSUInteger processed = 0;
+  NSTimeInterval deadline = [NSDate timeIntervalSinceReferenceDate] + 0.008;
+
+  [NSObject cancelPreviousPerformRequestsWithTarget:self
+    selector:@selector(continueWindowScan) object:nil];
+  if (_scanWindows == nil) return;
+
+  /* The time limit is checked between windows: an individual X server reply
+   * can still take longer. The count limit also bounds work on fast servers. */
+  while (processed < 8)
+    {
+      NSUInteger count = _scanDiscoveringIcons
+        ? _scanIconWindowCount : [_scanWindows count];
+      if (_scanWindowIndex >= count)
+        {
+          if (_scanDiscoveringIcons)
+            {
+              _scanDiscoveringIcons = NO;
+              _scanWindowIndex = 0;
+              continue;
+            }
+          DESTROY(_scanWindows);
+          _lastEventScanTime = [NSDate timeIntervalSinceReferenceDate];
+          return;
+        }
+      NSNumber *key = [_scanWindows objectAtIndex:_scanWindowIndex++];
+      Window window = (Window)[key unsignedLongValue];
+      if (_scanDiscoveringIcons)
+        [self discoverApplicationIconWindows:&window count:1];
+      else
+        {
+          if ([_knownWindows containsObject:key])
+            [self scanKnownWindow:window];
+          if (![_knownWindows containsObject:key])
+            [self scanClientWindow:window];
+        }
+      processed++;
+      if ([NSDate timeIntervalSinceReferenceDate] >= deadline) break;
+    }
+  [self performSelector:@selector(continueWindowScan)
+             withObject:nil afterDelay:0.001];
+}
 
 @end

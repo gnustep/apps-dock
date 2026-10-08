@@ -102,6 +102,8 @@
 - (BOOL) windowExists: (unsigned long)xWindow;
 - (BOOL) windowShouldBeIgnoredWithTitle: (NSString *)title path: (NSString *)path;
 - (void) scanKnownWindows;
+- (void) scanKnownWindow: (Window)window;
+- (void) continueWindowScan;
 - (NSString *) classNameForWindow: (Window)window;
 - (BOOL) windowHasDockAppClass: (Window)window;
 - (Window) dockAppIconWindowForWindow: (Window)window;

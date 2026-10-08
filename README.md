@@ -41,3 +41,21 @@ sh Tests/run-missing-applications.sh
 ```
 
 These checks require `clang`, GNUstep, and `xvfb-run`.
+
+Window discovery runs in small batches so that full X11 sweeps yield to clicks
+and icon-manager requests. Each batch handles at most eight windows and checks
+an 8 ms budget between windows; a single slow X server reply can exceed that
+budget. Newly mapped windows still use the event-driven discovery path.
+
+Run the X11 regression tests with an installed GNUstep GUI backend and Xvfb:
+
+```sh
+sh Tests/run-window-scan.sh
+sh Tests/run-x11-efficiency.sh
+sh Tests/run-miniwindow-suppression.sh
+```
+
+The window-scan test creates 128 clients and verifies main-loop responsiveness,
+complete discovery without duplicate classification, coalesced refreshes,
+known-window updates, destruction during a scan, and discovery of new clients
+while a sweep is active.

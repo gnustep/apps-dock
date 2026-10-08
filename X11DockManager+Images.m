@@ -73,7 +73,6 @@
       return nil;
     }
 
-  XSync(display, False);
   [self clearX11Error];
   ximage = XGetImage(display, drawable, 0, 0, width, height,
                      AllPlanes, ZPixmap);

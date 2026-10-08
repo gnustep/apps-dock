@@ -39,14 +39,22 @@
 #define DockHiddenIconWindowOffset 256
 
 static int X11DockManagerLastErrorCode = 0;
+static Display *X11DockManagerErrorDisplay = NULL;
+static unsigned long X11DockManagerFirstErrorRequest = 0;
 static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
 {
-  X11DockManagerLastErrorCode = event->error_code;
+  /* A reply may also deliver errors from earlier, asynchronous requests. */
+  if (display == X11DockManagerErrorDisplay &&
+      event->serial >= X11DockManagerFirstErrorRequest)
+    X11DockManagerLastErrorCode = event->error_code;
   return 0;
 }
 
 @interface X11DockManager (Private)
 - (void) registerIconManager;
+- (void) restoreSuppressedMiniwindows;
+- (void) suppressMiniwindowsUnderWindow: (Window)parent;
+- (void) scanForDockApps;
 - (NSRect) x11FrameForDockPlacement: (DockPlacement)placement;
 - (NSString *) classNameForWindow: (Window)window;
 - (Window) dockAppIconWindowForWindow: (Window)window;
@@ -107,6 +115,7 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
   DESTROY(_dockAppWindows);
   DESTROY(_iconConnection);
   DESTROY(_knownWindows);
+  DESTROY(_scanWindows);
   DEALLOC;
 }
 
@@ -117,7 +126,23 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
 
 - (void) setHidesMiniwindows: (BOOL)hidesMiniwindows
 {
+  if (_hidesMiniwindows == hidesMiniwindows)
+    {
+      return;
+    }
   _hidesMiniwindows = hidesMiniwindows;
+  if (_display)
+    {
+      if (!hidesMiniwindows)
+        {
+          [self restoreSuppressedMiniwindows];
+        }
+      else
+        {
+          [self suppressMiniwindowsUnderWindow:DefaultRootWindow((Display *)_display)];
+        }
+      [self scanForDockApps];
+    }
 }
 
 - (BOOL) start
@@ -166,14 +191,17 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
 
 - (BOOL) x11ErrorOccurred
 {
-  Display *display = (Display *)_display;
-  XSync(display, False);
+  /* Query callers already waited for a reply. Asynchronous writes must
+   * explicitly synchronize before checking their error result. */
   return X11DockManagerLastErrorCode != 0;
 }
 
 - (void) clearX11Error
 {
   X11DockManagerLastErrorCode = 0;
+  X11DockManagerErrorDisplay = (Display *)_display;
+  X11DockManagerFirstErrorRequest = _display
+    ? NextRequest((Display *)_display) : 0;
 }
 
 - (void) makeWindowSticky: (unsigned long)xWindow
@@ -191,7 +219,7 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
   [self clearX11Error];
   XChangeProperty(display, (Window)xWindow, desktopProperty, XA_CARDINAL, 32,
 		  PropModeReplace, (unsigned char *)&allDesktops, 1);
-  XFlush(display);
+  XSync(display, False);
   if ([self x11ErrorOccurred])
     {
       NSLog(@"Unable to mark DockWM window %lu as sticky.", xWindow);
@@ -235,6 +263,8 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
     }
 
   frame = [self x11FrameForDockPlacement:placement];
+  if (NSEqualRects(frame, _hostWindowFrame)) return;
+  _hostWindowFrame = frame;
   XMoveResizeWindow(display,
                     (Window)_hostWindow,
                     (int)NSMinX(frame),
