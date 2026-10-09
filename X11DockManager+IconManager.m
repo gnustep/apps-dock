@@ -56,7 +56,10 @@
       return;
     }
 
-  if ([data length])
+  /* Limit transport data before decoding. The icon manager also bounds
+   * decoded dimensions before inspecting or persisting representations.
+   * Badge-only updates do not need to decode an image at all. */
+  if (![badgeText length] && [data length] && [data length] <= 16 * 1024 * 1024)
     {
       icon = AUTORELEASE([[NSImage alloc] initWithData:data]);
     }

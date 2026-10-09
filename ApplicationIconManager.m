@@ -205,61 +205,68 @@
 
 - (BOOL) imageHasVisiblePixels: (NSImage *)image
 {
-  NSData *data;
-  NSBitmapImageRep *rep;
-  NSInteger width;
-  NSInteger height;
-  NSInteger x;
-  NSInteger y;
+  NSArray *representations = [image representations];
+  NSUInteger remainingPixels = 1024 * 1024;
+  NSSize size = [image size];
+  BOOL visible = NO;
 
-  if (!image)
+  /* Inspect the existing bitmap, never a TIFF encode/decode round trip.
+   * Reject oversized representations before scanning or caching the image.
+   * Bound the total work as well as each dimension for multi-rep images. */
+  if (!image || !(size.width > 0 && size.width <= 1024 &&
+                  size.height > 0 && size.height <= 1024) ||
+      ![representations count] || [representations count] > 16)
+    return NO;
+
+  for (NSImageRep *representation in representations)
     {
-      return NO;
+      NSInteger width = [representation pixelsWide];
+      NSInteger height = [representation pixelsHigh];
+      if (width <= 0 || height <= 0 || width > 1024 || height > 1024 ||
+          (NSUInteger)(width * height) > remainingPixels)
+        return NO;
+      remainingPixels -= width * height;
     }
 
-  data = [image TIFFRepresentation];
-  if (![data length])
+  for (NSImageRep *representation in representations)
     {
-      return YES;
+      if (![representation isKindOfClass:[NSBitmapImageRep class]])
+        {
+          /* Non-bitmap images cannot be inspected without rendering. */
+          visible = YES;
+          continue;
+        }
+
+      NSBitmapImageRep *rep = (NSBitmapImageRep *)representation;
+      NSInteger samples = [rep samplesPerPixel];
+      NSInteger bits = [rep bitsPerSample];
+      NSBitmapFormat format = [rep bitmapFormat];
+      if (![rep hasAlpha])
+        return YES;
+      /* getPixel: supplies integer samples. Preserve unusual representations
+       * rather than interpreting floating-point samples as integer alpha. */
+      if (samples < 1 || samples > 5 || bits < 1 || bits > 16 ||
+          (format & NSFloatingPointSamplesBitmapFormat))
+        {
+          visible = YES;
+          continue;
+        }
+
+      NSInteger width = [rep pixelsWide];
+      NSInteger height = [rep pixelsHigh];
+      NSInteger alphaIndex = (format & NSAlphaFirstBitmapFormat) ? 0 : samples - 1;
+      NSUInteger threshold = ((1UL << bits) - 1) / 100;
+      for (NSInteger y = 0; y < height; y++)
+        for (NSInteger x = 0; x < width; x++)
+          {
+            NSUInteger pixel[5] = {0};
+            [rep getPixel:pixel atX:x y:y];
+            if (pixel[alphaIndex] > threshold)
+              return YES;
+          }
     }
 
-  rep = [NSBitmapImageRep imageRepWithData:data];
-  if (!rep)
-    {
-      return YES;
-    }
-
-  width = [rep pixelsWide];
-  height = [rep pixelsHigh];
-  if (width <= 0 || height <= 0)
-    {
-      return NO;
-    }
-
-  for (y = 0; y < height; y++)
-    {
-      for (x = 0; x < width; x++)
-	{
-	  NSColor *color = [rep colorAtX:x y:y];
-	  CGFloat alpha = 1.0;
-
-	  if (color)
-	    {
-	      NS_DURING
-		[color getRed:NULL green:NULL blue:NULL alpha:&alpha];
-	      NS_HANDLER
-		alpha = 1.0;
-	      NS_ENDHANDLER
-
-	      if (alpha > 0.01)
-		{
-		  return YES;
-		}
-	    }
-	}
-    }
-
-  return NO;
+  return visible;
 }
 
 - (void) applyX11Icon: (NSImage *)icon
@@ -347,8 +354,8 @@
   if (!updateHasBadge &&
       !updateClearsBadge &&
       [icon isKindOfClass:[NSImage class]] &&
-      [self imageHasVisiblePixels:icon] &&
-      ![self item:item iconMatchesImage:icon])
+      ![self item:item iconMatchesImage:icon] &&
+      [self imageHasVisiblePixels:icon])
     {
       [item setIcon:icon];
       changed = YES;

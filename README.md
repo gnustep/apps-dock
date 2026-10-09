@@ -25,6 +25,11 @@ make
 The AppKit dock accepts filesystem drops. A companion X11 override-redirect host
 window is created next to it for dockapps and other small X11 clients.
 
+The dock remains visible on every workspace. Run the workspace regression
+check with `sh Tests/run-all-workspaces.sh` (requires Xvfb, Window Maker,
+`wmctrl`, `xprop`, and `xwininfo`). It switches among three workspaces on an
+isolated display and checks that the dock stays visible.
+
 Pinned applications that are moved or removed leave a question-mark placeholder
 in their saved position by default. The tooltip identifies the missing app, and
 its launch arguments and behavior settings are retained. The Dock checks for

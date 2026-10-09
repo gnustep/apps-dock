@@ -209,6 +209,7 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
   Display *display = (Display *)_display;
   Atom desktopProperty;
   unsigned long allDesktops = 0xFFFFFFFFUL;
+  XEvent event;
 
   if (!display || !xWindow)
     {
@@ -219,6 +220,18 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
   [self clearX11Error];
   XChangeProperty(display, (Window)xWindow, desktopProperty, XA_CARDINAL, 32,
 		  PropModeReplace, (unsigned char *)&allDesktops, 1);
+  /* The dock is already mapped. Ask the window manager to update its
+   * workspace assignment as well as publishing the initial property. */
+  memset(&event, 0, sizeof(event));
+  event.xclient.type = ClientMessage;
+  event.xclient.display = display;
+  event.xclient.window = (Window)xWindow;
+  event.xclient.message_type = desktopProperty;
+  event.xclient.format = 32;
+  event.xclient.data.l[0] = (long)allDesktops;
+  event.xclient.data.l[1] = 1; /* Normal application source. */
+  XSendEvent(display, DefaultRootWindow(display), False,
+             SubstructureRedirectMask | SubstructureNotifyMask, &event);
   XSync(display, False);
   if ([self x11ErrorOccurred])
     {

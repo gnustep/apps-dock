@@ -95,7 +95,8 @@
   [_x11 setHidesMiniwindows:_hidesMiniwindows];
   if ([_x11 start])
     {
-      [_x11 makeWindowSticky:(unsigned long)[_window windowNumber]];
+      /* GNUstep window numbers are backend tags, not native X11 IDs. */
+      [_x11 makeWindowSticky:(unsigned long)[_window windowRef]];
       [_x11 setDockPlacement:_dockPlacement];
     }
 
