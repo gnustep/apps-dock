@@ -56,6 +56,7 @@
     {
       NSString *executablePath = [self executablePathForApplicationPath:path];
 
+      [self prepareDefaultsForApplicationPath:path useIconManager:useIconManager];
       if ([[NSFileManager defaultManager] isExecutableFileAtPath:executablePath])
 	{
 	  [self launchTaskWithLaunchPath:executablePath
@@ -76,6 +77,7 @@
     }
   else if ([[NSFileManager defaultManager] isExecutableFileAtPath:path])
     {
+      [self prepareDefaultsForApplicationPath:path useIconManager:useIconManager];
       [self launchTaskWithLaunchPath:path
 			       arguments:arguments
 			  useIconManager:useIconManager];
@@ -108,7 +110,8 @@
   return identifier;
 }
 
-- (void) enableIconManagerForApplicationPath: (NSString *)path
+- (void) prepareDefaultsForApplicationPath: (NSString *)path
+                          useIconManager: (BOOL)useIconManager
 {
   NSString *domain = [self defaultsDomainForApplicationPath:path];
   NSUserDefaults *defaults;
@@ -125,7 +128,11 @@
   values = existingValues
     ? [NSMutableDictionary dictionaryWithDictionary:existingValues]
     : [NSMutableDictionary dictionary];
-  [values setObject:[NSNumber numberWithBool:YES] forKey:@"GSUseIconManager"];
+  [values setObject:[NSNumber numberWithBool:YES] forKey:@"GSSuppressAppIcon"];
+  if (useIconManager)
+    {
+      [values setObject:[NSNumber numberWithBool:YES] forKey:@"GSUseIconManager"];
+    }
   [defaults setPersistentDomain:values forName:domain];
   [defaults synchronize];
 }
@@ -147,10 +154,6 @@
   if ([homeDirectory length])
     {
       [task setCurrentDirectoryPath:homeDirectory];
-    }
-  if (useIconManager)
-    {
-      [self enableIconManagerForApplicationPath:path];
     }
   [task launch];
   RELEASE(task);
@@ -296,9 +299,10 @@
       return NO;
     }
 
-  if (useIconManager && [executablePath length])
+  if ([executablePath length])
     {
-      [self enableIconManagerForApplicationPath:executablePath];
+      [self prepareDefaultsForApplicationPath:executablePath
+                              useIconManager:useIconManager];
     }
 
   for (i = 0; i < [lines count]; i++)

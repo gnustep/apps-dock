@@ -28,6 +28,7 @@ main(int argc, const char **argv)
   NSApplication *app;
 
   ENTER_POOL
+    /* Set this before NSApplication can create DockWM's own icon window. */
     [[NSUserDefaults standardUserDefaults] setBool: YES
 					    forKey: @"GSSuppressAppIcon"];
   app = [NSApplication sharedApplication];

@@ -64,3 +64,20 @@ The window-scan test creates 128 clients and verifies main-loop responsiveness,
 complete discovery without duplicate classification, coalesced refreshes,
 known-window updates, destruction during a scan, and discovery of new clients
 while a sweep is active.
+
+Icon suppression is limited to GNUstep application icon windows and miniwindows
+whose dimensions are exactly 48×48 or 64×64. Application icons are unmapped;
+miniwindow unmapping also respects the miniwindow preference. Parent frames and
+ordinary windows of those sizes are not unmapped.
+
+Window Maker's own application tiles are also unmapped at those exact sizes.
+These anonymous root windows are recognized by their override-redirect,
+XDND, and icon event-mask properties, including when the application uses
+`GSSuppressAppIcon`. Run `sh Tests/run-overlay-preservation.sh` to check this
+alongside preservation of small overlay windows.
+
+Before launching an application, DockWM saves `GSSuppressAppIcon = YES` in that
+application’s defaults domain, preserving its other preferences. This applies
+to app bundles, executables, and applications launched through desktop files;
+no suppression argument is added to the command line. DockWM also sets this
+default for itself before creating its application object.

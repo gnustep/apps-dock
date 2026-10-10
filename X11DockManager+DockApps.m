@@ -122,77 +122,26 @@
 - (void) unmapIconWindow: (Window)window
 {
   Display *display = (Display *)_display;
-  Window root;
-  Window parent;
-  Window *children = NULL;
-  unsigned int childCount = 0;
-  Window moveWindow;
+  XWindowAttributes attr;
 
-  if (!display || window == (Window)_hostWindow)
+  /* Size alone must never turn an ordinary window into an application icon. */
+  if (!display || window == (Window)_hostWindow ||
+      (![self windowIsSmallGNUstepIconOrMiniWindow:window] &&
+       ![self windowIsWindowMakerApplicationIcon:window]) ||
+      ([self windowHasGNUstepMiniWindowStyle:window] && !_hidesMiniwindows))
     {
       return;
     }
-
-  /* Every suppression path must honor the preference, including fallbacks. */
-  if ([self windowHasGNUstepMiniWindowStyle:window] && !_hidesMiniwindows)
-    {
-      return;
-    }
-
-  root = RootWindow(display, DefaultScreen(display));
-  moveWindow = window;
 
   [self clearX11Error];
-  if (XQueryTree(display, window, &root, &parent, &children, &childCount) &&
-      ![self x11ErrorOccurred])
-    {
-      while (parent != None &&
-	     parent != root &&
-	     parent != (Window)_hostWindow)
-	{
-	  Window grandparent;
-	  Window *siblings = NULL;
-	  unsigned int siblingCount = 0;
-
-	  moveWindow = parent;
-	  if (!XQueryTree(display, moveWindow, &root, &grandparent,
-			  &siblings, &siblingCount) ||
-	      [self x11ErrorOccurred])
-	    {
-	      if (siblings)
-		{
-		  XFree(siblings);
-		}
-	      break;
-	    }
-	  if (siblings)
-	    {
-	      XFree(siblings);
-	    }
-	  parent = grandparent;
-	}
-    }
-  if (children)
-    {
-      XFree(children);
-    }
-
-  if (moveWindow == (Window)_hostWindow)
+  if (!XGetWindowAttributes(display, window, &attr) ||
+      [self x11ErrorOccurred] || attr.map_state == IsUnmapped)
     {
       return;
     }
 
-  if ([self windowHasGNUstepMiniWindowStyle:window])
-    {
-      XWindowAttributes attr;
-      [self clearX11Error];
-      if (!XGetWindowAttributes(display, moveWindow, &attr) ||
-          [self x11ErrorOccurred] || attr.map_state == IsUnmapped)
-        {
-          return;
-        }
-    }
-  XUnmapWindow(display, moveWindow);
+  /* A parent frame is not the icon and may contain other clients. */
+  XUnmapWindow(display, window);
   XFlush(display);
 }
 
@@ -303,23 +252,7 @@
 
 - (void) hideApplicationIconWindow: (Window)window
 {
-  Display *display = (Display *)_display;
-  NSRect frame;
-
-  if (!display || window == (Window)_hostWindow)
-    {
-      return;
-    }
-
-  frame = [self hiddenIconWindowFrame];
-  XMoveResizeWindow(display,
-		    window,
-		    (int)NSMinX(frame),
-		    (int)NSMinY(frame),
-		    (unsigned int)NSWidth(frame),
-		    (unsigned int)NSHeight(frame));
-  XMapWindow(display, window);
-  XFlush(display);
+  [self unmapIconWindow:window];
 }
 
 
@@ -437,8 +370,7 @@
       return NO;
     }
 
-  if (attr.width <= 0 || attr.height <= 0 ||
-      attr.width > 128 || attr.height > 128)
+  if (![self windowHasSuppressibleIconSize:window])
     {
       return NO;
     }

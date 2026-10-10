@@ -67,9 +67,53 @@ int main(void)
   Window mixed = makeWindow(d, root, DockNSMiniWindowMask | DockNSIconWindowMask, 64);
   [manager handlePossiblyNewWindow:large];
   [manager handlePossiblyNewWindow:mixed];
-  assert(![manager windowLooksManageable:large]);
+  assert([manager windowLooksManageable:large]);
   assert(![manager windowLooksManageable:mixed]);
   assert(mapped(d, large) && mapped(d, mixed));
+
+  /* Only exact 48x48 and 64x64 icon windows may be unmapped, by any path. */
+  [manager setHidesMiniwindows:YES];
+  assert(mapped(d, large));
+  unsigned long styles[] = {0, DockNSIconWindowMask, DockNSMiniWindowMask};
+  int sizes[][2] = {{5, 5}, {47, 47}, {48, 48}, {49, 49}, {63, 63},
+                    {64, 64}, {65, 65}, {96, 96}, {48, 64}, {64, 48}};
+  unsigned int i, j;
+  for (i = 0; i < sizeof(styles) / sizeof(styles[0]); i++)
+    for (j = 0; j < sizeof(sizes) / sizeof(sizes[0]); j++)
+      {
+        Window w = makeWindow(d, root, styles[i], sizes[j][0]);
+        XResizeWindow(d, w, sizes[j][0], sizes[j][1]);
+        BOOL shouldHide = styles[i] != 0 &&
+          ((sizes[j][0] == 48 && sizes[j][1] == 48) ||
+           (sizes[j][0] == 64 && sizes[j][1] == 64));
+        [manager handlePossiblyNewWindow:w];
+        assert(mapped(d, w) == !shouldHide);
+        XMapWindow(d, w);
+        [manager windowLooksManageable:w];
+        assert(mapped(d, w) == !shouldHide);
+        XMapWindow(d, w);
+        [manager unmapIconWindow:w];
+        assert(mapped(d, w) == !shouldHide);
+        XDestroyWindow(d, w);
+      }
+
+  /* Registered application icons are unmapped without changing their size. */
+  [manager setHidesMiniwindows:NO];
+  Window appIcon = makeWindow(d, root, DockNSIconWindowMask, 48);
+  assert([manager rememberApplicationIconWindow:appIcon
+                             processIdentifier:12345 title:nil]);
+  assert(!mapped(d, appIcon));
+  XWindowAttributes appAttr;
+  assert(XGetWindowAttributes(d, appIcon, &appAttr));
+  assert(appAttr.width == 48 && appAttr.height == 48);
+  XMapWindow(d, appIcon);
+  assert(![manager windowLooksManageable:appIcon]);
+  assert(!mapped(d, appIcon));
+  Window largeIcon = makeWindow(d, root, DockNSIconWindowMask, 96);
+  assert(![manager rememberApplicationIconWindow:largeIcon
+                              processIdentifier:12346 title:nil]);
+  assert([manager windowLooksManageable:largeIcon]);
+  assert(mapped(d, largeIcon));
 
   /* Re-enabling suppression still works, including reparented miniwindows. */
   [manager setHidesMiniwindows:YES];
@@ -78,16 +122,20 @@ int main(void)
   Window frame = makeWindow(d, root, 0, 100);
   Window child = makeWindow(d, frame, DockNSMiniWindowMask, 64);
   owner(d, child);
+  Window sibling = makeWindow(d, frame, 0, 64);
   [manager handlePossiblyNewWindow:child];
-  assert(!mapped(d, frame));
+  assert(mapped(d, frame) && !mapped(d, child));
+  XWindowAttributes siblingAttr;
+  assert(XGetWindowAttributes(d, sibling, &siblingAttr));
+  assert(siblingAttr.map_state == IsViewable);
   [manager setHidesMiniwindows:NO];
-  assert(mapped(d, mini) && mapped(d, frame));
+  assert(mapped(d, mini) && mapped(d, frame) && mapped(d, child));
 
   /* The preference itself must find existing icons inside WM frames. */
   [manager setHidesMiniwindows:YES];
-  assert(!mapped(d, mini) && !mapped(d, frame));
+  assert(!mapped(d, mini) && mapped(d, frame) && !mapped(d, child));
   [manager setHidesMiniwindows:NO];
-  assert(mapped(d, mini) && mapped(d, frame));
+  assert(mapped(d, mini) && mapped(d, frame) && mapped(d, child));
 
   /* Some WMs minimize by unmapping the frame, leaving its client mapped. */
   Window ownerFrame = makeWindow(d, root, 0, 400);

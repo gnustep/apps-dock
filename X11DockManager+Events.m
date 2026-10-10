@@ -170,6 +170,7 @@
 	  Window window =
 	    (Window)[[windows objectAtIndex:i] unsignedLongValue];
 
+	  [self handlePossiblyNewWindow:window];
 	  [self scanClientWindow:window];
 	}
     }
@@ -240,7 +241,13 @@
       return;
     }
 
-  if ([self windowHasGNUstepMiniWindowStyle:window])
+  if ([self windowIsWindowMakerApplicationIcon:window])
+    {
+      [self unmapIconWindow:window];
+      return;
+    }
+  if ([self windowHasGNUstepMiniWindowStyle:window] &&
+      [self windowHasSuppressibleIconSize:window])
     {
       if (_hidesMiniwindows)
         {
@@ -252,22 +259,9 @@
     {
       processIdentifier = [self processIdentifierForWindow:window];
       title = [self classNameForWindow:window];
-      if ([self rememberApplicationIconWindow:window
-			    processIdentifier:processIdentifier
-					title:title])
-	{
-	  return;
-	}
-      if (![self windowHasGNUstepMiniWindowStyle:window] || _hidesMiniwindows)
-	{
-	  [self unmapIconWindow:window];
-	}
-      return;
-    }
-
-  if (([self windowIsSmallRootOverrideRedirectWindow:window] &&
-       ![self windowLooksLikeWindowMakerDockApp:window]))
-    {
+      [self rememberApplicationIconWindow:window
+                       processIdentifier:processIdentifier
+                                   title:title];
       [self unmapIconWindow:window];
       return;
     }

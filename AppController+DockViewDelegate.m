@@ -427,6 +427,7 @@
 	  BOOL launched = NO;
 
 	  [self rememberLaunchedApplicationPath:path];
+          [self prepareDefaultsForApplicationPath:path useIconManager:YES];
 	  if ([[NSFileManager defaultManager]
 		isExecutableFileAtPath:executablePath])
 	    {
