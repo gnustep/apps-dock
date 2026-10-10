@@ -62,30 +62,29 @@ int main(void)
   [manager unmapIconWindow:mini];
   assert(mapped(d, mini));
 
-  /* Oversized and mixed-style miniwindows must bypass all icon hiding paths. */
+  /* Every miniwindow size, including mixed styles, honors the preference. */
   Window large = makeWindow(d, root, DockNSMiniWindowMask, 96);
   Window mixed = makeWindow(d, root, DockNSMiniWindowMask | DockNSIconWindowMask, 64);
   [manager handlePossiblyNewWindow:large];
   [manager handlePossiblyNewWindow:mixed];
-  assert([manager windowLooksManageable:large]);
+  assert(![manager windowLooksManageable:large]);
   assert(![manager windowLooksManageable:mixed]);
   assert(mapped(d, large) && mapped(d, mixed));
 
-  /* Only exact 48x48 and 64x64 icon windows may be unmapped, by any path. */
+  /* Style attributes, never dimensions, determine suppression on every path. */
   [manager setHidesMiniwindows:YES];
-  assert(mapped(d, large));
+  assert(!mapped(d, large));
   unsigned long styles[] = {0, DockNSIconWindowMask, DockNSMiniWindowMask};
   int sizes[][2] = {{5, 5}, {47, 47}, {48, 48}, {49, 49}, {63, 63},
-                    {64, 64}, {65, 65}, {96, 96}, {48, 64}, {64, 48}};
+                    {64, 64}, {65, 65}, {96, 96}, {48, 64}, {64, 48},
+                    {256, 256}, {400, 5}, {5, 400}};
   unsigned int i, j;
   for (i = 0; i < sizeof(styles) / sizeof(styles[0]); i++)
     for (j = 0; j < sizeof(sizes) / sizeof(sizes[0]); j++)
       {
         Window w = makeWindow(d, root, styles[i], sizes[j][0]);
         XResizeWindow(d, w, sizes[j][0], sizes[j][1]);
-        BOOL shouldHide = styles[i] != 0 &&
-          ((sizes[j][0] == 48 && sizes[j][1] == 48) ||
-           (sizes[j][0] == 64 && sizes[j][1] == 64));
+        BOOL shouldHide = styles[i] != 0;
         [manager handlePossiblyNewWindow:w];
         assert(mapped(d, w) == !shouldHide);
         XMapWindow(d, w);
@@ -109,11 +108,25 @@ int main(void)
   XMapWindow(d, appIcon);
   assert(![manager windowLooksManageable:appIcon]);
   assert(!mapped(d, appIcon));
-  Window largeIcon = makeWindow(d, root, DockNSIconWindowMask, 96);
-  assert(![manager rememberApplicationIconWindow:largeIcon
+  Window largeIcon = makeWindow(d, root, DockNSIconWindowMask, 256);
+  assert([manager rememberApplicationIconWindow:largeIcon
                               processIdentifier:12346 title:nil]);
-  assert([manager windowLooksManageable:largeIcon]);
-  assert(mapped(d, largeIcon));
+  assert(![manager windowLooksManageable:largeIcon]);
+  assert(!mapped(d, largeIcon));
+
+  /* Creation events, discovery, and icon-manager registration also ignore size. */
+  XSelectInput(d, root, SubstructureNotifyMask);
+  Window eventIcon = makeWindow(d, root, DockNSIconWindowMask, 256);
+  [manager processPendingEvents];
+  assert(!mapped(d, eventIcon));
+  Window discoveredIcon = makeWindow(d, root, DockNSIconWindowMask, 256);
+  XClassHint classHint = {"LargeIcon", "LargeIcon"};
+  XSetClassHint(d, discoveredIcon, &classHint);
+  [manager discoverApplicationIconWindows:&discoveredIcon count:1];
+  assert(!mapped(d, discoveredIcon));
+  Window registeredIcon = makeWindow(d, root, DockNSIconWindowMask, 256);
+  [manager setWindow:(unsigned int)registeredIcon appProcessId:12347];
+  assert(!mapped(d, registeredIcon));
 
   /* Re-enabling suppression still works, including reparented miniwindows. */
   [manager setHidesMiniwindows:YES];

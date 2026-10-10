@@ -28,8 +28,7 @@
     {
       return NSZeroRect;
     }
-  if (![self windowHasGNUstepIconStyle:(Window)aWindowNumber] ||
-      ![self windowIsIconSized:(Window)aWindowNumber])
+  if (![self windowHasGNUstepIconStyle:(Window)aWindowNumber])
     {
       return NSZeroRect;
     }

@@ -122,7 +122,7 @@
 	{
 	  continue;
 	}
-      if ([self windowHasGNUstepMiniWindowStyle:window])
+      if ([self windowIsGNUstepIconOrMiniWindow:window])
 	{
 	  continue;
 	}
@@ -134,7 +134,7 @@
 	  continue;
 	}
 
-      if (attr.override_redirect && attr.width <= 96 && attr.height <= 96)
+      if (attr.override_redirect)
 	{
 	  continue;
 	}
@@ -193,7 +193,7 @@
 	{
 	  continue;
 	}
-      if ([self windowHasGNUstepMiniWindowStyle:window])
+      if ([self windowIsGNUstepIconOrMiniWindow:window])
 	{
 	  continue;
 	}
@@ -205,7 +205,7 @@
 	  continue;
 	}
 
-      if (attr.override_redirect && attr.width <= 96 && attr.height <= 96)
+      if (attr.override_redirect)
 	{
 	  continue;
 	}

@@ -35,7 +35,6 @@
 #define DockGSWindowStyleAttr (1UL << 0)
 #define DockNSIconWindowMask 64UL
 #define DockNSMiniWindowMask 128UL
-#define DockSmallIconWindowMaximumSize 70
 #define DockHiddenIconWindowOffset 256
 
 static int X11DockManagerLastErrorCode = 0;

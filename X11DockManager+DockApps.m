@@ -45,8 +45,7 @@
   unsigned int childCount = 0;
   BOOL result = NO;
 
-  if (!display || window == (Window)_hostWindow ||
-      ![self windowIsSmallIconSized:window])
+  if (!display || window == (Window)_hostWindow)
     {
       return NO;
     }
@@ -80,9 +79,7 @@
       return NO;
     }
   if (![self windowHasDockAppClass:window] &&
-      ![self windowIsDockAppIconChild:window] &&
-      ![self windowIsSmallRootOverrideRedirectWindow:window] &&
-      ![self windowIsSmallDockedOverrideRedirectWindow:window])
+      ![self windowIsDockAppIconChild:window])
     {
       return NO;
     }
@@ -124,9 +121,9 @@
   Display *display = (Display *)_display;
   XWindowAttributes attr;
 
-  /* Size alone must never turn an ordinary window into an application icon. */
+  /* Suppress only windows explicitly marked as icons by their producer. */
   if (!display || window == (Window)_hostWindow ||
-      (![self windowIsSmallGNUstepIconOrMiniWindow:window] &&
+      (![self windowIsGNUstepIconOrMiniWindow:window] &&
        ![self windowIsWindowMakerApplicationIcon:window]) ||
       ([self windowHasGNUstepMiniWindowStyle:window] && !_hidesMiniwindows))
     {
@@ -306,8 +303,7 @@
   hints = XGetWMHints(display, window);
   if (![self x11ErrorOccurred] && hints)
     {
-      if ((hints->flags & IconWindowHint) && hints->icon_window != None &&
-	  [self windowIsSmallIconSized:hints->icon_window])
+      if ((hints->flags & IconWindowHint) && hints->icon_window != None)
 	{
 	  iconWindow = hints->icon_window;
 	}
@@ -323,7 +319,8 @@
       return iconWindow;
     }
 
-  if ([self windowIsSmallIconSized:window])
+  if ([self windowHasDockAppClass:window] ||
+      [self windowIsDockAppIconChild:window])
     {
       return window;
     }
@@ -370,11 +367,6 @@
       return NO;
     }
 
-  if (![self windowHasSuppressibleIconSize:window])
-    {
-      return NO;
-    }
-
   if ([_iconWindowsByProcessID objectForKey:identifier] &&
       ![[_iconWindowsByProcessID objectForKey:identifier] isEqual:windowKey])
     {
@@ -400,10 +392,6 @@
       NSString *title;
 
       if ([self windowIsRegisteredIconWindow:children[i]])
-	{
-	  continue;
-	}
-      if (![self windowIsSmallIconSized:children[i]])
 	{
 	  continue;
 	}

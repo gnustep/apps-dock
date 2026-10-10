@@ -60,7 +60,8 @@ int main(void)
   assert(viewable(display, client));
 
   /* Window Maker paints its own application tile when the application has
-   * suppressed its GNUstep icon. It has no client child or GNUstep style. */
+   * suppressed its GNUstep icon. XDND and event flags alone are not proof
+   * that a window is an icon, so this unmarked window must remain mapped. */
   Window tile = XCreateWindow(display, root, 100, 100, 64, 64, 0,
     CopyFromParent, InputOutput, CopyFromParent, CWOverrideRedirect, &attributes);
   XSelectInput(display, tile, SubstructureRedirectMask | ButtonPressMask |
@@ -74,13 +75,42 @@ int main(void)
   XChangeProperty(display, tile, xdnd, XA_ATOM, 32, PropModeReplace,
     (unsigned char *)&version, 1);
   [manager handlePossiblyNewWindow:tile];
-  assert(!viewable(display, tile));
+  assert(viewable(display, tile));
   XMapWindow(display, tile);
   [manager processPendingEvents];
-  assert(!viewable(display, tile));
+  assert(viewable(display, tile));
   XMapWindow(display, tile);
   assert(![manager windowLooksManageable:tile]);
-  assert(!viewable(display, tile));
+  assert(viewable(display, tile));
+
+  /* The producer's explicit application-icon property is sufficient at any
+   * dimensions. Malformed properties and XDND alone must not hide windows. */
+  Atom marker = XInternAtom(display, "_WINDOWMAKER_APP_ICON", False);
+  unsigned long owner = client;
+  XChangeProperty(display, tile, marker, XA_CARDINAL, 32, PropModeReplace,
+    (unsigned char *)&owner, 1);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
+  XChangeProperty(display, tile, marker, XA_WINDOW, 32, PropModeReplace,
+    (unsigned char *)&owner, 1);
+  int sizes[][2] = {{5, 5}, {48, 48}, {64, 64}, {256, 256}, {400, 5}};
+  for (unsigned int i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++)
+    {
+      XResizeWindow(display, tile, sizes[i][0], sizes[i][1]);
+      XMapWindow(display, tile);
+      [manager handlePossiblyNewWindow:tile];
+      assert(!viewable(display, tile));
+      XMapWindow(display, tile);
+      [manager processPendingEvents];
+      assert(!viewable(display, tile));
+      XMapWindow(display, tile);
+      assert(![manager windowLooksManageable:tile]);
+      assert(!viewable(display, tile));
+    }
+  XDeleteProperty(display, tile, marker);
+  XMapWindow(display, tile);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
   XDestroyWindow(display, tile);
 
   XDestroyWindow(display, frame);

@@ -72,39 +72,6 @@
 }
 
 
-- (BOOL) windowIsIconSized: (Window)window
-{
-  XWindowAttributes attr;
-
-  [self clearX11Error];
-  if (!XGetWindowAttributes((Display *)_display, window, &attr) ||
-      [self x11ErrorOccurred])
-    {
-      return NO;
-    }
-
-  return attr.width > 0 && attr.height > 0 &&
-    attr.width <= 128 && attr.height <= 128;
-}
-
-
-- (BOOL) windowIsSmallIconSized: (Window)window
-{
-  XWindowAttributes attr;
-
-  [self clearX11Error];
-  if (!XGetWindowAttributes((Display *)_display, window, &attr) ||
-      [self x11ErrorOccurred])
-    {
-      return NO;
-    }
-
-  return attr.width > 0 && attr.height > 0 &&
-    attr.width <= DockSmallIconWindowMaximumSize &&
-    attr.height <= DockSmallIconWindowMaximumSize;
-}
-
-
 - (BOOL) windowHasGNUstepMiniWindowStyle: (Window)window
 {
   return [self windowHasGNUstepStyleMask:DockNSMiniWindowMask
@@ -173,147 +140,37 @@
 }
 
 
-- (BOOL) windowHasSuppressibleIconSize: (Window)window
-{
-  XWindowAttributes attr;
-
-  [self clearX11Error];
-  if (!XGetWindowAttributes((Display *)_display, window, &attr) ||
-      [self x11ErrorOccurred])
-    {
-      return NO;
-    }
-  return (attr.width == 48 && attr.height == 48) ||
-    (attr.width == 64 && attr.height == 64);
-}
-
-
 - (BOOL) windowIsWindowMakerApplicationIcon: (Window)window
 {
   Display *display = (Display *)_display;
-  XWindowAttributes attr;
   Atom type;
   int format;
   unsigned long count, remaining;
   unsigned char *data = NULL;
   BOOL result = NO;
-  long iconEvents = SubstructureRedirectMask | ButtonPressMask |
-    ButtonReleaseMask | ButtonMotionMask | ExposureMask |
-    EnterWindowMask | LeaveWindowMask;
 
-  /* Window Maker draws application tiles even when GSSuppressAppIcon keeps
-   * the application from supplying an icon window. Its tiles are anonymous
-   * root windows with XDND support and the WCoreWindow event mask. Size or
-   * override-redirect alone also matches ordinary GNUstep overlay frames. */
-  if (![self windowHasSuppressibleIconSize:window] ||
-      ![self windowIsSmallRootOverrideRedirectWindow:window] ||
-      [self windowHasDockAppClass:window] ||
-      [[self classNameForWindow:window] length] ||
-      !XGetWindowAttributes(display, window, &attr) ||
-      (attr.all_event_masks & iconEvents) != iconEvents)
+  if (!display || window == (Window)_hostWindow)
     return NO;
 
+  [self clearX11Error];
   if (XGetWindowProperty(display, window,
-        XInternAtom(display, "XdndAware", False), 0, 1, False, XA_ATOM,
-        &type, &format, &count, &remaining, &data) == Success && data)
-    result = type == XA_ATOM && format == 32 && count == 1 &&
-      ((unsigned long *)data)[0] >= 3 && ((unsigned long *)data)[0] <= 5;
+        XInternAtom(display, "_WINDOWMAKER_APP_ICON", False), 0, 1,
+        False, XA_WINDOW, &type, &format, &count, &remaining, &data)
+      == Success && data)
+    {
+      result = ![self x11ErrorOccurred] && type == XA_WINDOW &&
+        format == 32 && count == 1 && remaining == 0 &&
+        ((Window *)data)[0] != None;
+    }
   if (data) XFree(data);
   return result;
 }
 
 
-- (BOOL) windowIsSmallGNUstepIconOrMiniWindow: (Window)window
+- (BOOL) windowIsGNUstepIconOrMiniWindow: (Window)window
 {
-  if (![self windowHasSuppressibleIconSize:window])
-    {
-      return NO;
-    }
-
   return [self windowHasGNUstepIconStyle:window] ||
     [self windowHasGNUstepMiniWindowStyle:window];
-}
-
-
-- (BOOL) windowIsSmallRootOverrideRedirectWindow: (Window)window
-{
-  Display *display = (Display *)_display;
-  int screen;
-  Window root;
-  Window parent;
-  Window *children = NULL;
-  unsigned int childCount = 0;
-  XWindowAttributes attr;
-  BOOL result = NO;
-
-  if (!display || window == (Window)_hostWindow ||
-      ![self windowIsSmallIconSized:window])
-    {
-      return NO;
-    }
-
-  screen = DefaultScreen(display);
-  root = RootWindow(display, screen);
-
-  [self clearX11Error];
-  if (!XGetWindowAttributes(display, window, &attr) ||
-      [self x11ErrorOccurred])
-    {
-      return NO;
-    }
-
-  [self clearX11Error];
-  if (XQueryTree(display, window, &root, &parent, &children, &childCount) &&
-      ![self x11ErrorOccurred])
-    {
-      result = attr.override_redirect && parent == RootWindow(display, screen);
-    }
-  if (children)
-    {
-      XFree(children);
-    }
-
-  return result;
-}
-
-
-- (BOOL) windowIsSmallDockedOverrideRedirectWindow: (Window)window
-{
-  Display *display = (Display *)_display;
-  Window root;
-  Window parent;
-  Window *children = NULL;
-  unsigned int childCount = 0;
-  XWindowAttributes attr;
-  BOOL result = NO;
-
-  if (!display || !_hostWindow || window == (Window)_hostWindow ||
-      ![self windowIsSmallIconSized:window])
-    {
-      return NO;
-    }
-
-  root = RootWindow(display, DefaultScreen(display));
-
-  [self clearX11Error];
-  if (!XGetWindowAttributes(display, window, &attr) ||
-      [self x11ErrorOccurred])
-    {
-      return NO;
-    }
-
-  [self clearX11Error];
-  if (XQueryTree(display, window, &root, &parent, &children, &childCount) &&
-      ![self x11ErrorOccurred])
-    {
-      result = attr.override_redirect && parent == (Window)_hostWindow;
-    }
-  if (children)
-    {
-      XFree(children);
-    }
-
-  return result;
 }
 
 
@@ -363,8 +220,7 @@
       [self unmapIconWindow:window];
       return NO;
     }
-  if ([self windowHasGNUstepMiniWindowStyle:window] &&
-      [self windowHasSuppressibleIconSize:window])
+  if ([self windowHasGNUstepMiniWindowStyle:window])
     {
       if (_hidesMiniwindows)
         {
@@ -372,23 +228,17 @@
         }
       return NO;
     }
-  if ([self windowIsRegisteredIconWindow:window] &&
-      [self windowHasSuppressibleIconSize:window])
+  if ([self windowIsRegisteredIconWindow:window])
     {
       [self unmapIconWindow:window];
       return NO;
     }
-  if ([self windowIsSmallGNUstepIconOrMiniWindow:window])
+  if ([self windowIsGNUstepIconOrMiniWindow:window])
     {
       [self rememberApplicationIconWindow:window
                        processIdentifier:[self processIdentifierForWindow:window]
                                    title:[self classNameForWindow:window]];
       [self unmapIconWindow:window];
-      return NO;
-    }
-  if (([self windowIsSmallRootOverrideRedirectWindow:window] &&
-       ![self windowLooksLikeWindowMakerDockApp:window]))
-    {
       return NO;
     }
   [self clearX11Error];
@@ -521,8 +371,7 @@
     {
       return NO;
     }
-  if ([self windowIsRegisteredIconWindow:window] &&
-      [self windowHasSuppressibleIconSize:window])
+  if ([self windowIsRegisteredIconWindow:window])
     {
       return NO;
     }

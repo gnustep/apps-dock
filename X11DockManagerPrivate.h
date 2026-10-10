@@ -35,7 +35,6 @@
 #define DockGSWindowStyleAttr (1UL << 0)
 #define DockNSIconWindowMask 64UL
 #define DockNSMiniWindowMask 128UL
-#define DockSmallIconWindowMaximumSize 70
 #define DockHiddenIconWindowOffset 256
 #define X11DockManagerEventScanInterval 1.0
 
@@ -80,15 +79,10 @@
 - (BOOL) windowHasGNUstepStyleMask: (unsigned long)styleMask
                              window: (Window)window;
 - (BOOL) windowHasGNUstepIconStyle: (Window)window;
-- (BOOL) windowIsIconSized: (Window)window;
-- (BOOL) windowIsSmallIconSized: (Window)window;
 - (BOOL) windowHasGNUstepMiniWindowStyle: (Window)window;
 - (BOOL) windowIsGNUstepMainMenu: (Window)window;
-- (BOOL) windowHasSuppressibleIconSize: (Window)window;
+- (BOOL) windowIsGNUstepIconOrMiniWindow: (Window)window;
 - (BOOL) windowIsWindowMakerApplicationIcon: (Window)window;
-- (BOOL) windowIsSmallGNUstepIconOrMiniWindow: (Window)window;
-- (BOOL) windowIsSmallRootOverrideRedirectWindow: (Window)window;
-- (BOOL) windowIsSmallDockedOverrideRedirectWindow: (Window)window;
 - (BOOL) windowHasTransientForHint: (Window)window;
 - (BOOL) windowIsDockAppIconChild: (Window)window;
 - (BOOL) windowLooksLikeWindowMakerDockApp: (Window)window;

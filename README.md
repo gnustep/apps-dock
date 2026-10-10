@@ -65,16 +65,20 @@ complete discovery without duplicate classification, coalesced refreshes,
 known-window updates, destruction during a scan, and discovery of new clients
 while a sweep is active.
 
-Icon suppression is limited to GNUstep application icon windows and miniwindows
-whose dimensions are exactly 48×48 or 64×64. Application icons are unmapped;
-miniwindow unmapping also respects the miniwindow preference. Parent frames and
-ordinary windows of those sizes are not unmapped.
+Icon suppression uses the `_GNUSTEP_WM_ATTR` application-icon and miniwindow
+style bits, regardless of window dimensions. Miniwindow unmapping respects the
+miniwindow preference. Window Maker application tiles are identified by the
+`_WINDOWMAKER_APP_ICON` property (type `WINDOW`, one owning client window ID),
+published by the companion gs-wmaker change. Parent frames, ordinary windows,
+and unmarked tiles are not unmapped. Size, XDND support, and event masks are not used
+to infer icon identity. Dockapp discovery uses explicit `DockApp` class and
+`WM_HINTS` icon-window metadata instead of size heuristics.
 
-Window Maker's own application tiles are also unmapped at those exact sizes.
-These anonymous root windows are recognized by their override-redirect,
-XDND, and icon event-mask properties, including when the application uses
-`GSSuppressAppIcon`. Run `sh Tests/run-overlay-preservation.sh` to check this
-alongside preservation of small overlay windows.
+Run `sh Tests/run-overlay-preservation.sh` to check preservation of unmarked
+overlay windows, including windows with XDND support and icon-like event masks.
+Run `sh Tests/run-windowmaker-icons.sh /path/to/gs-wmaker/src/wmaker` to verify
+that Window Maker publishes the marker and DockWM unmaps the resulting tile
+on an isolated display.
 
 Before launching an application, DockWM saves `GSSuppressAppIcon = YES` in that
 application’s defaults domain, preserving its other preferences. This applies

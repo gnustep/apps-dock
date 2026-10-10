@@ -53,10 +53,6 @@
       switch (event.type)
 	{
 	case CreateNotify:
-	  if (event.xcreatewindow.width > 0 &&
-	      event.xcreatewindow.height > 0 &&
-	      event.xcreatewindow.width <= DockSmallIconWindowMaximumSize &&
-	      event.xcreatewindow.height <= DockSmallIconWindowMaximumSize)
 	    {
 	      if (!iconEventWindows)
 		{
@@ -246,8 +242,7 @@
       [self unmapIconWindow:window];
       return;
     }
-  if ([self windowHasGNUstepMiniWindowStyle:window] &&
-      [self windowHasSuppressibleIconSize:window])
+  if ([self windowHasGNUstepMiniWindowStyle:window])
     {
       if (_hidesMiniwindows)
         {
@@ -255,7 +250,7 @@
         }
       return;
     }
-  if ([self windowIsSmallGNUstepIconOrMiniWindow:window])
+  if ([self windowIsGNUstepIconOrMiniWindow:window])
     {
       processIdentifier = [self processIdentifierForWindow:window];
       title = [self classNameForWindow:window];
