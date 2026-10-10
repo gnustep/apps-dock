@@ -121,7 +121,7 @@
   Display *display = (Display *)_display;
   XWindowAttributes attr;
 
-  /* Suppress only windows explicitly marked as icons by their producer. */
+  /* Apply the ordered icon classification and the miniwindow preference. */
   if (!display || window == (Window)_hostWindow ||
       (![self windowIsGNUstepIconOrMiniWindow:window] &&
        ![self windowIsWindowMakerApplicationIcon:window]) ||

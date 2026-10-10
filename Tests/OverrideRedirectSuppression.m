@@ -62,7 +62,7 @@ int main(void)
   /* Window Maker paints its own application tile when the application has
    * suppressed its GNUstep icon. XDND and event flags alone are not proof
    * that a window is an icon, so this unmarked window must remain mapped. */
-  Window tile = XCreateWindow(display, root, 100, 100, 64, 64, 0,
+  Window tile = XCreateWindow(display, root, 100, 100, 96, 96, 0,
     CopyFromParent, InputOutput, CopyFromParent, CWOverrideRedirect, &attributes);
   XSelectInput(display, tile, SubstructureRedirectMask | ButtonPressMask |
     ButtonReleaseMask | ButtonMotionMask | ExposureMask |
@@ -101,6 +101,7 @@ int main(void)
       [manager handlePossiblyNewWindow:tile];
       assert(!viewable(display, tile));
       XMapWindow(display, tile);
+      XSync(display, False);
       [manager processPendingEvents];
       assert(!viewable(display, tile));
       XMapWindow(display, tile);
@@ -127,10 +128,12 @@ int main(void)
       [manager handlePossiblyNewWindow:tile];
       assert(!viewable(display, tile));
       XMapWindow(display, tile);
+      XSync(display, False);
       [manager processPendingEvents];
       assert(!viewable(display, tile));
     }
-  /* A named client or a container of ordinary clients is not a legacy tile. */
+  /* Shared exclusions protect clients even at the last-resort icon size. */
+  XResizeWindow(display, tile, 64, 64);
   XClassHint hint = {"Gorm", "Gorm"};
   XSetClassHint(display, tile, &hint);
   XMapWindow(display, tile);
@@ -141,7 +144,8 @@ int main(void)
   [manager handlePossiblyNewWindow:tile];
   assert(viewable(display, tile));
   XDestroyWindow(display, overlay);
-  /* Missing XDND or icon event flags must also prevent fallback matches. */
+  /* Without the attribute signature, non-icon dimensions remain mapped. */
+  XResizeWindow(display, tile, 96, 96);
   XDeleteProperty(display, tile, xdnd);
   [manager handlePossiblyNewWindow:tile];
   assert(viewable(display, tile));
@@ -152,6 +156,27 @@ int main(void)
   assert(viewable(display, tile));
   XDeleteProperty(display, root, boardAtom);
   XDestroyWindow(display, board);
+  XDeleteProperty(display, tile, xdnd);
+  /* Third and last: exact 48x48 or 64x64, with no marker or signature. */
+  int fallbackSizes[][2] = {{47, 47}, {48, 48}, {49, 49}, {63, 63},
+    {64, 64}, {65, 65}, {48, 64}, {64, 48}, {400, 5}};
+  for (unsigned int i = 0; i < sizeof(fallbackSizes) / sizeof(fallbackSizes[0]); i++)
+    {
+      int width = fallbackSizes[i][0], height = fallbackSizes[i][1];
+      BOOL shouldHide = (width == 48 && height == 48) ||
+        (width == 64 && height == 64);
+      XResizeWindow(display, tile, width, height);
+      XMapWindow(display, tile);
+      [manager handlePossiblyNewWindow:tile];
+      assert(viewable(display, tile) == !shouldHide);
+      XMapWindow(display, tile);
+      XSync(display, False);
+      [manager processPendingEvents];
+      assert(viewable(display, tile) == !shouldHide);
+      XMapWindow(display, tile);
+      [manager windowLooksManageable:tile];
+      assert(viewable(display, tile) == !shouldHide);
+    }
   XDestroyWindow(display, tile);
 
   XDestroyWindow(display, frame);

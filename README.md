@@ -73,7 +73,10 @@ published by the companion gs-wmaker change. When that property is absent,
 DockWM falls back to a validated Window Maker noticeboard plus an anonymous
 override-redirect root window with the icon event mask and XDND support.
 Named clients, transient windows, and containers of ordinary windows are
-excluded. This legacy fallback is heuristic; window dimensions are never used.
+excluded from both fallback paths. If both attribute matches fail, exact
+48×48 or 64×64 dimensions are used as the final fallback. The explicit marker
+and legacy attribute matches do not require those dimensions. Both fallback
+paths are heuristic.
 Dockapp discovery uses explicit `DockApp` class and
 `WM_HINTS` icon-window metadata instead of size heuristics.
 

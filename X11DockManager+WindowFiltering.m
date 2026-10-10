@@ -171,7 +171,6 @@ static Window WindowProperty(Display *display, Window window, Atom property)
     ButtonReleaseMask | ButtonMotionMask | ExposureMask |
     EnterWindowMask | LeaveWindowMask;
 
-
   if (!display || window == (Window)_hostWindow)
     return NO;
 
@@ -186,16 +185,14 @@ static Window WindowProperty(Display *display, Window window, Atom property)
         ((Window *)data)[0] != None;
     }
   if (data) XFree(data);
-  /* An explicit marker is authoritative, including a malformed marker that
-   * must not silently fall back to heuristic identification. */
-  if (result || type != None)
-    return result;
+  /* First prefer the producer's explicit application-icon marker. */
+  if (result)
+    return YES;
 
-  /* Legacy Window Maker tiles have no icon marker. Require the combined
-   * root-window, event-mask and XDND signature, never their dimensions. */
+  /* Shared exclusions apply to both fallback paths. Never classify a named
+   * client or a container of ordinary windows merely from its dimensions. */
   if (!XGetWindowAttributes(display, window, &attr) ||
       !attr.override_redirect || attr.class != InputOutput ||
-      (attr.all_event_masks & iconEvents) != iconEvents ||
       [[self classNameForWindow:window] length] ||
       [self windowHasTransientForHint:window] ||
       [self windowHasIgnoredWindowType:window] ||
@@ -211,22 +208,27 @@ static Window WindowProperty(Display *display, Window window, Atom property)
   if (children) XFree(children);
   if (!result) return NO;
 
-  /* Verify that Window Maker is present; a stale root property is insufficient. */
+  /* Second try the legacy attribute signature, independent of size. */
   Atom boardAtom = XInternAtom(display, "_WINDOWMAKER_NOTICEBOARD", False);
   noticeboard = WindowProperty(display, root, boardAtom);
-  if (noticeboard == None ||
-      WindowProperty(display, noticeboard, boardAtom) != noticeboard)
-    return NO;
+  if (noticeboard != None &&
+      WindowProperty(display, noticeboard, boardAtom) == noticeboard &&
+      (attr.all_event_masks & iconEvents) == iconEvents)
+    {
+      data = NULL;
+      result = NO;
+      if (XGetWindowProperty(display, window,
+            XInternAtom(display, "XdndAware", False), 0, 1, False, XA_ATOM,
+            &type, &format, &count, &remaining, &data) == Success && data)
+        result = type == XA_ATOM && format == 32 && count == 1 && remaining == 0 &&
+          ((unsigned long *)data)[0] >= 3 && ((unsigned long *)data)[0] <= 5;
+      if (data) XFree(data);
+      if (result) return YES;
+    }
 
-  data = NULL;
-  result = NO;
-  if (XGetWindowProperty(display, window,
-        XInternAtom(display, "XdndAware", False), 0, 1, False, XA_ATOM,
-        &type, &format, &count, &remaining, &data) == Success && data)
-    result = type == XA_ATOM && format == 32 && count == 1 && remaining == 0 &&
-      ((unsigned long *)data)[0] >= 3 && ((unsigned long *)data)[0] <= 5;
-  if (data) XFree(data);
-  return result;
+  /* Only after both attribute matches fail, use the original exact sizes. */
+  return (attr.width == 48 && attr.height == 48) ||
+    (attr.width == 64 && attr.height == 64);
 }
 
 
