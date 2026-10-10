@@ -35,8 +35,19 @@ for attempt in $(seq 1 50); do
     if xprop -id "$window" _WINDOWMAKER_APP_ICON 2>/dev/null |
        grep -q '_WINDOWMAKER_APP_ICON(WINDOW): window id # 0x'; then
       if xwininfo -id "$window" | grep -q 'Map State: IsUnMapped'; then
-        echo 'PASS: Window Maker publishes application-icon metadata and DockWM unmaps its tile'
-        exit 0
+        # Exercise the same real tile as an unmodified Window Maker would
+        # publish it, retaining its native event flags and XDND property.
+        xprop -id "$window" -remove _WINDOWMAKER_APP_ICON
+        xdotool windowmap "$window"
+        for retry in $(seq 1 50); do
+          if xwininfo -id "$window" | grep -q 'Map State: IsUnMapped'; then
+            echo 'PASS: explicit marker and legacy attribute fallback both unmap the real tile'
+            exit 0
+          fi
+          sleep 0.1
+        done
+        echo 'FAIL: legacy tile remained mapped after its marker was removed' >&2
+        exit 1
       fi
     fi
   done

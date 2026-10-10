@@ -69,16 +69,20 @@ Icon suppression uses the `_GNUSTEP_WM_ATTR` application-icon and miniwindow
 style bits, regardless of window dimensions. Miniwindow unmapping respects the
 miniwindow preference. Window Maker application tiles are identified by the
 `_WINDOWMAKER_APP_ICON` property (type `WINDOW`, one owning client window ID),
-published by the companion gs-wmaker change. Parent frames, ordinary windows,
-and unmarked tiles are not unmapped. Size, XDND support, and event masks are not used
-to infer icon identity. Dockapp discovery uses explicit `DockApp` class and
+published by the companion gs-wmaker change. When that property is absent,
+DockWM falls back to a validated Window Maker noticeboard plus an anonymous
+override-redirect root window with the icon event mask and XDND support.
+Named clients, transient windows, and containers of ordinary windows are
+excluded. This legacy fallback is heuristic; window dimensions are never used.
+Dockapp discovery uses explicit `DockApp` class and
 `WM_HINTS` icon-window metadata instead of size heuristics.
 
 Run `sh Tests/run-overlay-preservation.sh` to check preservation of unmarked
 overlay windows, including windows with XDND support and icon-like event masks.
 Run `sh Tests/run-windowmaker-icons.sh /path/to/gs-wmaker/src/wmaker` to verify
-that Window Maker publishes the marker and DockWM unmaps the resulting tile
-on an isolated display.
+that Window Maker publishes the marker and DockWM unmaps the resulting tile,
+then removes the marker and verifies the legacy fallback on the same tile.
+This test uses an isolated display and requires `xdotool`.
 
 Before launching an application, DockWM saves `GSSuppressAppIcon = YES` in that
 application’s defaults domain, preserving its other preferences. This applies

@@ -111,6 +111,47 @@ int main(void)
   XMapWindow(display, tile);
   [manager handlePossiblyNewWindow:tile];
   assert(viewable(display, tile));
+  /* Simulate legacy Window Maker's self-referencing noticeboard. */
+  Atom boardAtom = XInternAtom(display, "_WINDOWMAKER_NOTICEBOARD", False);
+  Window board = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, 0, 0);
+  XChangeProperty(display, root, boardAtom, XA_WINDOW, 32, PropModeReplace,
+    (unsigned char *)&board, 1);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
+  XChangeProperty(display, board, boardAtom, XA_WINDOW, 32, PropModeReplace,
+    (unsigned char *)&board, 1);
+  for (unsigned int i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++)
+    {
+      XResizeWindow(display, tile, sizes[i][0], sizes[i][1]);
+      XMapWindow(display, tile);
+      [manager handlePossiblyNewWindow:tile];
+      assert(!viewable(display, tile));
+      XMapWindow(display, tile);
+      [manager processPendingEvents];
+      assert(!viewable(display, tile));
+    }
+  /* A named client or a container of ordinary clients is not a legacy tile. */
+  XClassHint hint = {"Gorm", "Gorm"};
+  XSetClassHint(display, tile, &hint);
+  XMapWindow(display, tile);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
+  XDeleteProperty(display, tile, XA_WM_CLASS);
+  Window overlay = XCreateSimpleWindow(display, tile, 0, 0, 5, 5, 0, 0, 0);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
+  XDestroyWindow(display, overlay);
+  /* Missing XDND or icon event flags must also prevent fallback matches. */
+  XDeleteProperty(display, tile, xdnd);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
+  XChangeProperty(display, tile, xdnd, XA_ATOM, 32, PropModeReplace,
+    (unsigned char *)&version, 1);
+  XSelectInput(display, tile, ExposureMask);
+  [manager handlePossiblyNewWindow:tile];
+  assert(viewable(display, tile));
+  XDeleteProperty(display, root, boardAtom);
+  XDestroyWindow(display, board);
   XDestroyWindow(display, tile);
 
   XDestroyWindow(display, frame);

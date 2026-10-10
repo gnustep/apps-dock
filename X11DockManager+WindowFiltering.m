@@ -19,6 +19,22 @@
 
 #import "X11DockManagerPrivate.h"
 
+static Window WindowProperty(Display *display, Window window, Atom property)
+{
+  Atom type;
+  int format;
+  unsigned long count, remaining;
+  unsigned char *data = NULL;
+  Window value = None;
+
+  if (XGetWindowProperty(display, window, property, 0, 1, False, XA_WINDOW,
+        &type, &format, &count, &remaining, &data) == Success && data &&
+      type == XA_WINDOW && format == 32 && count == 1 && remaining == 0)
+    value = ((Window *)data)[0];
+  if (data) XFree(data);
+  return value;
+}
+
 @implementation X11DockManager (WindowFiltering)
 
 - (BOOL) windowIsRegisteredIconWindow: (Window)window
@@ -143,11 +159,18 @@
 - (BOOL) windowIsWindowMakerApplicationIcon: (Window)window
 {
   Display *display = (Display *)_display;
-  Atom type;
+  Atom type = None;
   int format;
   unsigned long count, remaining;
   unsigned char *data = NULL;
   BOOL result = NO;
+  XWindowAttributes attr;
+  Window root, parent, noticeboard, *children = NULL;
+  unsigned int childCount = 0;
+  long iconEvents = SubstructureRedirectMask | ButtonPressMask |
+    ButtonReleaseMask | ButtonMotionMask | ExposureMask |
+    EnterWindowMask | LeaveWindowMask;
+
 
   if (!display || window == (Window)_hostWindow)
     return NO;
@@ -162,6 +185,46 @@
         format == 32 && count == 1 && remaining == 0 &&
         ((Window *)data)[0] != None;
     }
+  if (data) XFree(data);
+  /* An explicit marker is authoritative, including a malformed marker that
+   * must not silently fall back to heuristic identification. */
+  if (result || type != None)
+    return result;
+
+  /* Legacy Window Maker tiles have no icon marker. Require the combined
+   * root-window, event-mask and XDND signature, never their dimensions. */
+  if (!XGetWindowAttributes(display, window, &attr) ||
+      !attr.override_redirect || attr.class != InputOutput ||
+      (attr.all_event_masks & iconEvents) != iconEvents ||
+      [[self classNameForWindow:window] length] ||
+      [self windowHasTransientForHint:window] ||
+      [self windowHasIgnoredWindowType:window] ||
+      [self windowIsGNUstepIconOrMiniWindow:window])
+    return NO;
+
+  if (!XQueryTree(display, window, &root, &parent, &children, &childCount))
+    return NO;
+  result = parent == root;
+  for (unsigned int i = 0; i < childCount && result; i++)
+    result = [self windowHasGNUstepIconStyle:children[i]] &&
+      ![self windowHasGNUstepMiniWindowStyle:children[i]];
+  if (children) XFree(children);
+  if (!result) return NO;
+
+  /* Verify that Window Maker is present; a stale root property is insufficient. */
+  Atom boardAtom = XInternAtom(display, "_WINDOWMAKER_NOTICEBOARD", False);
+  noticeboard = WindowProperty(display, root, boardAtom);
+  if (noticeboard == None ||
+      WindowProperty(display, noticeboard, boardAtom) != noticeboard)
+    return NO;
+
+  data = NULL;
+  result = NO;
+  if (XGetWindowProperty(display, window,
+        XInternAtom(display, "XdndAware", False), 0, 1, False, XA_ATOM,
+        &type, &format, &count, &remaining, &data) == Success && data)
+    result = type == XA_ATOM && format == 32 && count == 1 && remaining == 0 &&
+      ((unsigned long *)data)[0] >= 3 && ((unsigned long *)data)[0] <= 5;
   if (data) XFree(data);
   return result;
 }
