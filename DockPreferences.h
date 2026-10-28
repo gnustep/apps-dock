@@ -60,6 +60,9 @@ enum
 - (void) saveSingleClickLaunchesApplications: (BOOL)singleClickLaunches;
 - (BOOL) savedKeepsMissingApplications;
 - (void) saveKeepsMissingApplications: (BOOL)keep;
+- (void) applyIconManagerPreference;
+- (BOOL) savedUsesIconManager;
+- (void) saveUsesIconManager: (BOOL)useIconManager;
 - (BOOL) savedHidesMiniwindows;
 - (void) saveHidesMiniwindows: (BOOL)hidesMiniwindows;
 - (CGFloat) savedDockScale;

@@ -92,3 +92,15 @@ application’s defaults domain, preserving its other preferences. This applies
 to app bundles, executables, and applications launched through desktop files;
 no suppression argument is added to the command line. DockWM also sets this
 default for itself before creating its application object.
+
+At startup, DockWM writes `GSUseIconManager` to the GNUstep global defaults
+domain. It defaults to enabled. Turn off **Settings → Behavior → Use icon
+manager for all applications** to disable it; the global choice is saved
+immediately and retained across restarts. Applications read this setting when
+starting, so restart running applications to pick up a change. DockWM no longer
+writes this setting into individual application domains. At startup it removes
+saved per-application `GSUseIconManager` overrides so applications inherit the
+global choice, preserving their other preferences.
+
+Run `sh Tests/run-icon-manager-preferences.sh` to check the default, persistence,
+and migration of per-application overrides using an isolated defaults database.

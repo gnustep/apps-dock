@@ -79,6 +79,7 @@ SettingsClampedWindowAlpha(CGFloat alpha)
 - (void) playSoundOnRemoveChanged: (id)sender;
 - (void) singleClickLaunchChanged: (id)sender;
 - (void) keepMissingApplicationsChanged: (id)sender;
+- (void) useIconManagerChanged: (id)sender;
 - (void) hideMiniwindowsChanged: (id)sender;
 - (void) dockCellSizeChanged: (id)sender;
 - (void) runningIndicatorModeChanged: (id)sender;

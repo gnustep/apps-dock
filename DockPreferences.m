@@ -428,6 +428,53 @@ static NSString *DockScaleDefaultsKey = @"DockScale";
 					  forKey:DockSingleClickLaunchesApplicationsDefaultsKey];
 }
 
+- (void) applyIconManagerPreference
+{
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSEnumerator *names = [[defaults persistentDomainNames] objectEnumerator];
+  NSString *name;
+
+  /* Retire application overrides so every application inherits the global choice. */
+  while ((name = [names nextObject]))
+    {
+      NSDictionary *existing = [defaults persistentDomainForName:name];
+
+      if (![name isEqual:NSGlobalDomain] &&
+          [existing objectForKey:@"GSUseIconManager"] != nil)
+        {
+          NSMutableDictionary *domain =
+            [NSMutableDictionary dictionaryWithDictionary:existing];
+
+          [domain removeObjectForKey:@"GSUseIconManager"];
+          [defaults setPersistentDomain:domain forName:name];
+        }
+    }
+  [self saveUsesIconManager:[self savedUsesIconManager]];
+}
+
+- (BOOL) savedUsesIconManager
+{
+  NSDictionary *domain = [[NSUserDefaults standardUserDefaults]
+    persistentDomainForName:NSGlobalDomain];
+  id value = [domain objectForKey:@"GSUseIconManager"];
+
+  return value == nil || [value boolValue];
+}
+
+- (void) saveUsesIconManager: (BOOL)useIconManager
+{
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSDictionary *existing = [defaults persistentDomainForName:NSGlobalDomain];
+  NSMutableDictionary *domain = existing
+    ? [NSMutableDictionary dictionaryWithDictionary:existing]
+    : [NSMutableDictionary dictionary];
+
+  [domain setObject:[NSNumber numberWithBool:useIconManager]
+            forKey:@"GSUseIconManager"];
+  [defaults setPersistentDomain:domain forName:NSGlobalDomain];
+  [defaults synchronize];
+}
+
 - (BOOL) savedHidesMiniwindows
 {
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];

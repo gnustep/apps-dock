@@ -27,7 +27,8 @@
 
   _items = [NSMutableArray new];
   _recyclerController = [RecyclerController new];
-  _preferences = [DockPreferences new];
+  _preferences = [[DockPreferences alloc] init];
+  [_preferences applyIconManagerPreference];
   _applicationScanner = [RunningApplicationScanner new];
   _applicationStore = [[DockApplicationStore alloc]
 			initWithScanner:_applicationScanner];

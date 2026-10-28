@@ -167,6 +167,17 @@
   return _singleClickLaunchesApplications;
 }
 
+- (BOOL) settingsControllerUsesIconManager: (SettingsController *)controller
+{
+  return [_preferences savedUsesIconManager];
+}
+
+- (void) settingsController: (SettingsController *)controller
+  didChangeUsesIconManager: (BOOL)useIconManager
+{
+  [_preferences saveUsesIconManager:useIconManager];
+}
+
 - (BOOL) settingsControllerHidesMiniwindows: (SettingsController *)controller
 {
   return _hidesMiniwindows;

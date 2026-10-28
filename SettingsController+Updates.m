@@ -146,6 +146,9 @@
   [_keepMissingApplicationsButton setState:
       ([_delegate settingsControllerKeepsMissingApplications:self] ?
        NSOnState : NSOffState)];
+  [_useIconManagerButton setState:
+      ([_delegate settingsControllerUsesIconManager:self] ?
+       NSOnState : NSOffState)];
   [_hideMiniwindowsButton setState:
       ([_delegate settingsControllerHidesMiniwindows:self] ?
        NSOnState : NSOffState)];

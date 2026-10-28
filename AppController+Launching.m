@@ -56,7 +56,7 @@
     {
       NSString *executablePath = [self executablePathForApplicationPath:path];
 
-      [self prepareDefaultsForApplicationPath:path useIconManager:useIconManager];
+      [self prepareDefaultsForApplicationPath:path];
       if ([[NSFileManager defaultManager] isExecutableFileAtPath:executablePath])
 	{
 	  [self launchTaskWithLaunchPath:executablePath
@@ -77,7 +77,7 @@
     }
   else if ([[NSFileManager defaultManager] isExecutableFileAtPath:path])
     {
-      [self prepareDefaultsForApplicationPath:path useIconManager:useIconManager];
+      [self prepareDefaultsForApplicationPath:path];
       [self launchTaskWithLaunchPath:path
 			       arguments:arguments
 			  useIconManager:useIconManager];
@@ -111,7 +111,6 @@
 }
 
 - (void) prepareDefaultsForApplicationPath: (NSString *)path
-                          useIconManager: (BOOL)useIconManager
 {
   NSString *domain = [self defaultsDomainForApplicationPath:path];
   NSUserDefaults *defaults;
@@ -129,10 +128,6 @@
     ? [NSMutableDictionary dictionaryWithDictionary:existingValues]
     : [NSMutableDictionary dictionary];
   [values setObject:[NSNumber numberWithBool:YES] forKey:@"GSSuppressAppIcon"];
-  if (useIconManager)
-    {
-      [values setObject:[NSNumber numberWithBool:YES] forKey:@"GSUseIconManager"];
-    }
   [defaults setPersistentDomain:values forName:domain];
   [defaults synchronize];
 }
@@ -301,8 +296,7 @@
 
   if ([executablePath length])
     {
-      [self prepareDefaultsForApplicationPath:executablePath
-                              useIconManager:useIconManager];
+      [self prepareDefaultsForApplicationPath:executablePath];
     }
 
   for (i = 0; i < [lines count]; i++)

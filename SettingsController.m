@@ -49,6 +49,7 @@
   DESTROY(_applicationPathField);
   DESTROY(_applicationPopup);
   DESTROY(_singleClickLaunchButton);
+  DESTROY(_useIconManagerButton);
   DESTROY(_hideMiniwindowsButton);
   DESTROY(_keepMissingApplicationsButton);
   DESTROY(_wiggleOnAttentionRequestButton);

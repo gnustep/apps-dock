@@ -155,6 +155,12 @@ didChangeWigglesOnAttentionRequest:[(NSButton *)sender state] == NSOnState];
 didChangeSingleClickLaunchesApplications:[(NSButton *)sender state] == NSOnState];
 }
 
+- (void) useIconManagerChanged: (id)sender
+{
+  [_delegate settingsController:self
+       didChangeUsesIconManager:[(NSButton *)sender state] == NSOnState];
+}
+
 - (void) hideMiniwindowsChanged: (id)sender
 {
   [_delegate settingsController:self

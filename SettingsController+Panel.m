@@ -28,6 +28,7 @@
   [label setEditable:NO];
   [label setSelectable:NO];
   [label setBordered:NO];
+  [label setBezeled:NO];
   [label setDrawsBackground:NO];
   [label setAlignment:NSRightTextAlignment];
   [label setFont:[NSFont systemFontOfSize:[NSFont systemFontSize]]];
@@ -43,6 +44,7 @@
   [label setEditable:NO];
   [label setSelectable:NO];
   [label setBordered:NO];
+  [label setBezeled:NO];
   [label setDrawsBackground:NO];
   [label setFont:[NSFont boldSystemFontOfSize:[NSFont systemFontSize]]];
   return label;
@@ -343,6 +345,13 @@
                    action:@selector(keepMissingApplicationsChanged:)];
   [behaviorView addSubview:_keepMissingApplicationsButton];
 
+  _useIconManagerButton =
+    [self buttonWithTitle:@"Use icon manager for all applications"
+                    frame:NSMakeRect(18, 22, 390, 24)
+               buttonType:NSSwitchButton
+                   action:@selector(useIconManagerChanged:)];
+  [behaviorView addSubview:_useIconManagerButton];
+
   label = [self labelWithTitle:@"App"
 			 frame:NSMakeRect(18, 296, 110, 20)];
   [applicationsView addSubview:label];
@@ -362,6 +371,9 @@
     [[NSTextField alloc] initWithFrame:NSMakeRect(132, 252, 280, 24)];
   [_applicationPathField setEditable:NO];
   [_applicationPathField setSelectable:YES];
+  [_applicationPathField setBordered:NO];
+  [_applicationPathField setBezeled:NO];
+  [_applicationPathField setDrawsBackground:NO];
   [applicationsView addSubview:_applicationPathField];
 
   label = [self labelWithTitle:@"Arguments"
