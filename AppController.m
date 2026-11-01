@@ -111,6 +111,7 @@
   [_x11EventTimer invalidate];
   [_scanTimer invalidate];
   [_processScanTimer invalidate];
+  [_applicationExitTimer invalidate];
   DESTROY(_settingsController);
   DESTROY(_recyclerController);
   DESTROY(_preferences);

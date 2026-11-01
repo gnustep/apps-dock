@@ -64,6 +64,16 @@
       [menu addItem:[NSMenuItem separatorItem]];
     }
 
+  menuItem = [self menuItemWithTitle:@"Keep In Dock"
+                              action:@selector(toggleKeepInDock:)
+                                item:item];
+  [menuItem setState:([_delegate respondsToSelector:
+                                @selector(dockView:itemIsKeptInDock:)] &&
+                      ![_delegate dockView:self itemIsKeptInDock:item])
+                     ? NSOffState : NSOnState];
+  [menuItem setEnabled:hasPath];
+  [menu addItem:menuItem];
+
   menuItem = [self menuItemWithTitle:@"Open At Login"
                               action:@selector(toggleOpenAtLogin:)
                                 item:item];
@@ -99,6 +109,16 @@
   return menu;
 }
 
+
+- (void) toggleKeepInDock: (id)sender
+{
+  if ([_delegate respondsToSelector:
+                 @selector(dockView:didToggleKeepInDockForItem:)])
+    {
+      [_delegate dockView:self
+          didToggleKeepInDockForItem:[sender representedObject]];
+    }
+}
 
 - (void) toggleOpenAtLogin: (id)sender
 {

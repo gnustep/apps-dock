@@ -189,6 +189,19 @@
 }
 
 
+- (void) hideDockedWindow: (unsigned long)xWindow
+{
+  NSNumber *key = [NSNumber numberWithUnsignedLong:xWindow];
+
+  if (_display && [_dockedWindowFrames objectForKey:key])
+    {
+      XUnmapWindow((Display *)_display, (Window)xWindow);
+      [_dockedWindowFrames removeObjectForKey:key];
+      [self updateHostWindowShape];
+      XFlush((Display *)_display);
+    }
+}
+
 - (void) moveDockedWindow: (unsigned long)xWindow toIndex: (NSUInteger)index
 {
   Display *display = (Display *)_display;

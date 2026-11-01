@@ -23,7 +23,16 @@
 
 - (void) loadPersistedApplications
 {
+  NSInteger i;
+
   [_applicationStore loadPersistedApplicationsIntoItems:_items];
+  for (i = [_items count] - 1; i >= 0; i--)
+    {
+      if (![self applicationPathIsKeptInDock:[[_items objectAtIndex:i] path]])
+        {
+          [_items removeObjectAtIndex:i];
+        }
+    }
 }
 
 - (void) savePersistedApplications
@@ -234,6 +243,7 @@
   processPath = [self executablePathForProcessIdentifier:processIdentifier];
   bundlePath = [DockItem applicationBundlePathForPath:processPath];
   if (![bundlePath length] ||
+      ![self applicationPathIsKeptInDock:bundlePath] ||
       [self applicationBundlePathIsDockWM:bundlePath] ||
       [self dockHasApplicationPath:bundlePath])
     {

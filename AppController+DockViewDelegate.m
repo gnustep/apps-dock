@@ -156,6 +156,7 @@
 		}
 	    }
 
+	  [self setApplicationPath:applicationPath keptInDock:YES];
 	  [item setPinned:YES];
 	  [_items insertObject:item atIndex:insertionIndex];
 	  insertionIndex++;
@@ -245,6 +246,38 @@
 - (BOOL) dockView: (id)dockView canRemoveItemAtIndex: (NSUInteger)index
 {
   return [self canRemoveDockItemAtIndex:index];
+}
+
+- (BOOL) dockView: (id)dockView itemIsKeptInDock: (DockItem *)item
+{
+  [self resolvePathForX11WindowItem:item];
+  return [self applicationPathIsKeptInDock:[item path]];
+}
+
+- (void) dockView: (id)dockView didToggleKeepInDockForItem: (DockItem *)item
+{
+  NSInteger i;
+  BOOL keep;
+
+  [self resolvePathForX11WindowItem:item];
+  if (![[item path] length])
+    {
+      return;
+    }
+  keep = ![self applicationPathIsKeptInDock:[item path]];
+  [self setApplicationPath:[item path] keptInDock:keep];
+  for (i = [_items count] - 1; i >= 0; i--)
+    {
+      DockItem *candidate = [_items objectAtIndex:i];
+
+      if (![self applicationPathIsKeptInDock:[candidate path]])
+        {
+          [_x11 hideDockedWindow:[candidate xWindow]];
+          [_items removeObjectAtIndex:i];
+        }
+    }
+  [self savePersistedApplications];
+  [self refreshDock];
 }
 
 - (BOOL) dockView: (id)dockView itemIsOpenAtLogin: (DockItem *)item

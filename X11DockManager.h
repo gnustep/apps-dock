@@ -96,6 +96,7 @@ typedef enum
 
 @interface X11DockManager (Layout)
 - (void) dockWindow: (unsigned long)xWindow atIndex: (NSUInteger)index;
+- (void) hideDockedWindow: (unsigned long)xWindow;
 - (void) moveDockedWindow: (unsigned long)xWindow toIndex: (NSUInteger)index;
 @end
 

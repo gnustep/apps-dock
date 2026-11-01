@@ -114,6 +114,8 @@ matchesRunningProcessPath: (NSString *)processPath;
 - (BOOL) launchApplicationAtPath: (NSString *)path;
 - (BOOL) launchApplicationItem: (DockItem *)item;
 - (BOOL) launchApplicationItem: (DockItem *)item useIconManager: (BOOL)useIconManager;
+- (BOOL) applicationPathIsKeptInDock: (NSString *)path;
+- (void) setApplicationPath: (NSString *)path keptInDock: (BOOL)keep;
 - (NSString *) defaultsDomainForApplicationPath: (NSString *)path;
 - (void) prepareDefaultsForApplicationPath: (NSString *)path;
 - (void) launchTaskWithLaunchPath: (NSString *)path
@@ -125,6 +127,7 @@ matchesRunningProcessPath: (NSString *)processPath;
 - (void) launchOpenAtLoginApplications;
 - (void) performInitialApplicationScans;
 - (void) scanRunningApplications;
+- (void) scanForExitedApplications;
 - (NSArray *) recyclerPaths;
 - (BOOL) directoryHasVisibleContentsAtPath: (NSString *)path;
 - (BOOL) recyclerHasContents;

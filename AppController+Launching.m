@@ -110,6 +110,42 @@
   return identifier;
 }
 
+- (BOOL) applicationPathIsKeptInDock: (NSString *)path
+{
+  NSString *domain = [self defaultsDomainForApplicationPath:path];
+  id value;
+
+  if (![domain length])
+    {
+      return YES;
+    }
+  value = [[[NSUserDefaults standardUserDefaults]
+              persistentDomainForName:domain] objectForKey:@"GSDockKeepInDock"];
+  return value == nil || [value boolValue];
+}
+
+- (void) setApplicationPath: (NSString *)path keptInDock: (BOOL)keep
+{
+  NSString *domain = [self defaultsDomainForApplicationPath:path];
+  NSUserDefaults *defaults;
+  NSDictionary *existingValues;
+  NSMutableDictionary *values;
+
+  if (![domain length])
+    {
+      return;
+    }
+  defaults = [NSUserDefaults standardUserDefaults];
+  [defaults synchronize];
+  existingValues = [defaults persistentDomainForName:domain];
+  values = existingValues
+    ? [NSMutableDictionary dictionaryWithDictionary:existingValues]
+    : [NSMutableDictionary dictionary];
+  [values setObject:[NSNumber numberWithBool:keep] forKey:@"GSDockKeepInDock"];
+  [defaults setPersistentDomain:values forName:domain];
+  [defaults synchronize];
+}
+
 - (void) prepareDefaultsForApplicationPath: (NSString *)path
 {
   NSString *domain = [self defaultsDomainForApplicationPath:path];

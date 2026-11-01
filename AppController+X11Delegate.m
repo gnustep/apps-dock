@@ -177,6 +177,10 @@
     {
       path = [self executablePathForX11WindowTitle:title];
     }
+  if (![self applicationPathIsKeptInDock:path])
+    {
+      return;
+    }
   iconIdentifier = [self x11IconIdentifierForTitle:title
 					      path:path
 					    window:xWindow];

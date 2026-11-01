@@ -52,7 +52,65 @@
 							 userInfo:nil
 							  repeats:YES];
     }
+  if (!_applicationExitTimer)
+    {
+      _applicationExitTimer = [NSTimer scheduledTimerWithTimeInterval:0.5
+                               target:self
+                               selector:@selector(scanForExitedApplications)
+                               userInfo:nil repeats:YES];
+    }
   [self launchOpenAtLoginApplications];
+}
+
+/* Check exits independently of discovery, missing-file checks and recycler
+ * maintenance. Window closure alone does not mean the application has quit. */
+- (void) scanForExitedApplications
+{
+  NSArray *processPaths = nil;
+  BOOL changed = NO;
+  NSUInteger i;
+
+  for (i = [_items count]; i > 0; i--)
+    {
+      DockItem *item = [_items objectAtIndex:i - 1];
+
+      if ([item kind] == DockItemApplication &&
+          [item state] != DockItemNotRunning)
+        {
+          if (!processPaths)
+            {
+              processPaths = [self runningProcessExecutablePaths];
+            }
+          if ([self applicationItemHasRunningProcess:item paths:processPaths] ||
+              ([item xWindow] && [_x11 windowExists:[item xWindow]]))
+            {
+              continue;
+            }
+          [self restoreApplicationItemAfterExit:item];
+          if (![item isPinned])
+            {
+              [_items removeObjectAtIndex:i - 1];
+            }
+          changed = YES;
+        }
+      else if ([item kind] == DockItemX11Window && [item xWindow] &&
+               ![_x11 windowExists:[item xWindow]])
+        {
+          [item setXWindow:0];
+          [item setState:DockItemNotRunning];
+          if (![item isPinned])
+            {
+              [_items removeObjectAtIndex:i - 1];
+            }
+          changed = YES;
+        }
+    }
+
+  if (changed)
+    {
+      [self pruneApplicationIconUpdatesForExitedProcesses];
+      [self refreshDock];
+    }
 }
 
 - (void) scanRunningApplications
@@ -113,6 +171,7 @@
       DockItem *item;
 
       if (![bundlePath length] ||
+          ![self applicationPathIsKeptInDock:bundlePath] ||
 	  [self applicationBundlePathIsDockWM:bundlePath] ||
 	  [self dockHasApplicationPath:bundlePath] ||
 	  [self transientApplicationItemMatchingBundlePath:bundlePath])

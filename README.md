@@ -47,6 +47,11 @@ sh Tests/run-missing-applications.sh
 
 These checks require `clang`, GNUstep, and `xvfb-run`.
 
+Application exits are checked every half second, independently of the slower
+application discovery and missing-file scans. Closing a window keeps its app
+running in the dock if the process is still alive. Run the exit regression
+checks with `sh Tests/run-application-exits.sh`.
+
 Window discovery runs in small batches so that full X11 sweeps yield to clicks
 and icon-manager requests. Each batch handles at most eight windows and checks
 an 8 ms budget between windows; a single slow X server reply can exceed that
@@ -104,3 +109,13 @@ global choice, preserving their other preferences.
 
 Run `sh Tests/run-icon-manager-preferences.sh` to check the default, persistence,
 and migration of per-application overrides using an isolated defaults database.
+
+Each application's menu includes **Keep In Dock**, enabled by default. Turning
+it off immediately removes the app from the dock, even while it is running,
+and prevents process scans and icon updates from adding it again. The choice
+is saved as `GSDockKeepInDock` in the application's defaults domain. Drag the
+application back onto the dock to enable it again. This is separate from
+**Open At Login** and does not quit the application.
+
+Run `sh Tests/run-keep-in-dock.sh` to check the menu, saved visibility, X11
+rediscovery, and restoring an app by dropping it back into the dock.

@@ -140,6 +140,7 @@ DockViewCalibratedBackgroundColor(NSColor *color)
                               item: (DockItem *)item;
 - (NSMenu *) menuForDockItem: (DockItem *)item;
 - (NSMenu *) menuForRecycler;
+- (void) toggleKeepInDock: (id)sender;
 - (void) toggleOpenAtLogin: (id)sender;
 - (void) showItemInFileViewer: (id)sender;
 - (void) showItemSettings: (id)sender;

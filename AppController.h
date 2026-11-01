@@ -45,6 +45,7 @@
   NSTimer *_x11EventTimer;
   NSTimer *_scanTimer;
   NSTimer *_processScanTimer;
+  NSTimer *_applicationExitTimer;
   NSMenu *_dockMenu;
   DockPlacement _dockPlacement;
   NSInteger _dockCellSizeMode;
