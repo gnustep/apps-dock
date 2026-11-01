@@ -66,6 +66,7 @@
 
 - (void) dealloc
 {
+  [self closeIconWindows];
   [_tooltipTimer invalidate];
   DESTROY(_tooltipTimer);
   [_wiggleTimer invalidate];
@@ -154,12 +155,20 @@
 {
   [super viewDidMoveToWindow];
   [self updateTrackingRect];
+  [self syncIconWindows];
 }
 
 - (void) setFrame: (NSRect)frame
 {
   [super setFrame:frame];
   [self updateTrackingRect];
+  [self syncIconWindows];
+}
+
+- (void) setNeedsDisplay: (BOOL)flag
+{
+  [super setNeedsDisplay:flag];
+  if (flag) [self syncIconWindows];
 }
 
 - (void) setDelegate: (id)delegate

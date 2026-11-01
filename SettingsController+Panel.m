@@ -297,21 +297,21 @@
   [appearanceView addSubview:_tooltipDelayValueLabel];
 
   _wiggleOnLaunchButton =
-    [self buttonWithTitle:@"Wiggle On Launch"
+    [self buttonWithTitle:@"Bounce On Launch"
 		    frame:NSMakeRect(18, 264, 180, 24)
 	       buttonType:NSSwitchButton
 		   action:@selector(wiggleOnLaunchChanged:)];
   [behaviorView addSubview:_wiggleOnLaunchButton];
 
   _wiggleOnActivationButton =
-    [self buttonWithTitle:@"Wiggle On Activate"
+    [self buttonWithTitle:@"Bounce On Activate"
 		    frame:NSMakeRect(18, 238, 180, 24)
 	       buttonType:NSSwitchButton
 		   action:@selector(wiggleOnActivationChanged:)];
   [behaviorView addSubview:_wiggleOnActivationButton];
 
   _wiggleOnAttentionRequestButton =
-    [self buttonWithTitle:@"Wiggle On Attention"
+    [self buttonWithTitle:@"Bounce On Attention"
 		    frame:NSMakeRect(18, 212, 200, 24)
 	       buttonType:NSSwitchButton
 		   action:@selector(wiggleOnAttentionRequestChanged:)];
@@ -413,21 +413,21 @@
   [applicationsView addSubview:_useDockBehaviorDefaultsButton];
 
   _applicationWiggleOnLaunchButton =
-    [self buttonWithTitle:@"Wiggle On Launch"
+    [self buttonWithTitle:@"Bounce On Launch"
 		    frame:NSMakeRect(132, 58, 180, 24)
 	       buttonType:NSSwitchButton
 		   action:@selector(applicationWiggleOnLaunchChanged:)];
   [applicationsView addSubview:_applicationWiggleOnLaunchButton];
 
   _applicationWiggleOnActivationButton =
-    [self buttonWithTitle:@"Wiggle On Activate"
+    [self buttonWithTitle:@"Bounce On Activate"
 		    frame:NSMakeRect(132, 36, 180, 24)
 	       buttonType:NSSwitchButton
 		   action:@selector(applicationWiggleOnActivationChanged:)];
   [applicationsView addSubview:_applicationWiggleOnActivationButton];
 
   _applicationWiggleOnAttentionRequestButton =
-    [self buttonWithTitle:@"Wiggle On Attention"
+    [self buttonWithTitle:@"Bounce On Attention"
 		    frame:NSMakeRect(132, 14, 190, 24)
 	       buttonType:NSSwitchButton
 		   action:@selector(applicationWiggleOnAttentionRequestChanged:)];

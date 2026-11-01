@@ -70,7 +70,7 @@
   ASSIGN(_wiggleItem, item);
   _wiggleStartTime = [NSDate timeIntervalSinceReferenceDate];
   _wiggleRepeatsUntilAcknowledged = NO;
-  _wiggleTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 / 30.0
+  _wiggleTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 / 60.0
                                                   target:self
                                                 selector:@selector(stepWiggle:)
                                                 userInfo:nil
@@ -130,7 +130,7 @@
   [_recyclerWiggleTimer invalidate];
   DESTROY(_recyclerWiggleTimer);
   _recyclerWiggleStartTime = [NSDate timeIntervalSinceReferenceDate];
-  _recyclerWiggleTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 / 30.0
+  _recyclerWiggleTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 / 60.0
                                                           target:self
                                                         selector:@selector(stepRecyclerWiggle:)
                                                         userInfo:nil

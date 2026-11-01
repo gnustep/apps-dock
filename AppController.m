@@ -54,7 +54,7 @@
   [self loadPersistedApplications];
   frame = [self dockWindowFrameForPlacement:_dockPlacement];
 
-  _window = [[NSWindow alloc] initWithContentRect:frame
+  _window = [[DockWindow alloc] initWithContentRect:frame
                                         styleMask:NSBorderlessWindowMask
                                           backing:NSBackingStoreBuffered
                                             defer:NO];

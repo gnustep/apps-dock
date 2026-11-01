@@ -119,3 +119,21 @@ application back onto the dock to enable it again. This is separate from
 
 Run `sh Tests/run-keep-in-dock.sh` to check the menu, saved visibility, X11
 rediscovery, and restoring an app by dropping it back into the dock.
+
+### Icon windows and bounce animation
+
+Application icons and the Recycler use separate transparent, non-focusable
+windows. The dock window retains the background, tiles, separators, and running
+dots at their existing positions. Icon windows move through a large vertical hop
+and a smaller settling hop; a top-edge dock bounces downward into the screen.
+Attention requests repeat until acknowledged. Existing animation preferences
+remain compatible, and the settings now label the motion “Bounce.” Mouse and
+drag input stays on the stationary dock cells while the icons move. On X11,
+icon windows have explicit alpha-derived bounding shapes and empty input shapes,
+so the dots remain exposed without a compositor and clicks reach the dock.
+These overlays are unmanaged to prevent a window-manager frame from trapping
+pointer input.
+
+Run `sh Tests/run-icon-windows.sh` with an available Xvfb server to check native
+window creation, dot visibility, pointer activation (using XTest), bounce movement,
+reordering, and window cleanup. The test requires the XTest development library.

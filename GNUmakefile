@@ -25,6 +25,7 @@ RunningApplicationScanner.m \
 RecyclerController.m \
 DockApplicationStore.m \
 ApplicationIconManager.m \
+DockView+IconWindows.m \
 DockView+Wiggle.m \
 DockView+Layout.m \
 DockView+Menus.m \

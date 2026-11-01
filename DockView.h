@@ -21,6 +21,10 @@
 
 @class DockItem;
 
+/* Keeps the separate icon windows ordered with the dock on GNUstep. */
+@interface DockWindow : NSWindow
+@end
+
 typedef enum
   {
     DockRunningIndicatorModeRunningDot = 0,
@@ -53,6 +57,9 @@ typedef enum
 @interface DockView : NSView
 {
   NSMutableArray *_items;
+  NSMutableDictionary *_iconWindows;
+  NSWindow *_tooltipWindow;
+  BOOL _syncingIconWindows;
   id _delegate;
   BOOL _draggingPaths;
   BOOL _performedDragOperation;

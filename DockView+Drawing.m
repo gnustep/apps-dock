@@ -206,15 +206,6 @@
       return;
     }
 
-  if (item == _wiggleItem)
-    {
-      NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] - _wiggleStartTime;
-      CGFloat progress = (CGFloat)(elapsed / DockWiggleDuration);
-      CGFloat decay = MAX(0.0, 1.0 - progress);
-
-      angle = sin(progress * 8.0 * M_PI) * 8.0 * decay;
-    }
-
   if (![self drawImage:icon inCell:cell size:size angle:angle])
     {
       [self drawFallbackIconForItem:item inCell:cell];
@@ -366,18 +357,6 @@
   CGFloat angle = 0.0;
   NSImage *standardRecyclerIcon = [self standardRecyclerIcon];
   NSImage *recyclerIcon = standardRecyclerIcon ? standardRecyclerIcon : _recyclerIcon;
-
-  [self drawCellBackgroundInCell:cell];
-
-  if (_recyclerWiggleStartTime)
-    {
-      NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] -
-	_recyclerWiggleStartTime;
-      CGFloat progress = (CGFloat)(elapsed / DockWiggleDuration);
-      CGFloat decay = MAX(0.0, 1.0 - progress);
-
-      angle = sin(progress * 8.0 * M_PI) * 8.0 * decay;
-    }
 
   if (![self drawImage:recyclerIcon
 		 inCell:cell
@@ -562,15 +541,12 @@
       NSRect cell = NSMakeRect(origin.x, origin.y, _cellSize, _cellSize);
 
       [self drawCellBackgroundInCell:cell];
-      [self drawDockTileForItem:item
-			 inCell:cell
-			   size:[self iconSizeForItemAtIndex:i]];
+
       [self drawStateForItem:item inCell:cell];
     }
 
   [self drawDropIndicator];
-  [self drawRecyclerTile];
-  [self drawTooltip];
+  [self drawCellBackgroundInCell:[self recyclerTileRect]];
   [self drawDockBorder];
 }
 

@@ -92,6 +92,10 @@ DockViewCalibratedBackgroundColor(NSColor *color)
 - (BOOL) isOpaque;
 - (void) setItems: (NSArray *)items;
 - (void) setPinnedItemCount: (NSUInteger)count;
+- (void) syncIconWindows;
+- (void) closeIconWindows;
+- (void) drawIconWindowForItem: (DockItem *)item;
+- (CGFloat) bounceOffsetAtTime: (NSTimeInterval)elapsed;
 - (void) stopWiggle;
 - (void) stepWiggle: (NSTimer *)timer;
 - (void) startWiggleForItem: (DockItem *)item;
