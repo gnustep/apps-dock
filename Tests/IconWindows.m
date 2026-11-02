@@ -1,4 +1,5 @@
 #import "DockViewPrivate.h"
+#import "AppControllerPrivate.h"
 #import "X11DockManagerPrivate.h"
 #import <X11/Xlib.h>
 #import <X11/Xutil.h>
@@ -35,6 +36,45 @@ static Window RootAncestor(Display *display, Window window)
 - (void) handlePossiblyNewWindow: (Window)window {}
 
 - (void) scanClientWindow: (Window)window {}
+
+@end
+
+/* Exercise the production event timer without discovery or login launches. */
+@interface ModalTestController : AppController
+
+- (id) initWithManager: (X11DockManager *)manager;
+- (void) stopTimers;
+
+@end
+
+@implementation ModalTestController
+
+- (id) initWithManager: (X11DockManager *)manager
+{
+  self = [super init];
+  if (self) _x11 = RETAIN(manager);
+  return self;
+}
+
+- (void) scanRunningApplications
+{
+}
+
+- (void) launchOpenAtLoginApplications
+{
+}
+
+- (void) stopTimers
+{
+  [_x11EventTimer invalidate];
+  _x11EventTimer = nil;
+  [_scanTimer invalidate];
+  _scanTimer = nil;
+  [_processScanTimer invalidate];
+  _processScanTimer = nil;
+  [_applicationExitTimer invalidate];
+  _applicationExitTimer = nil;
+}
 
 @end
 
@@ -211,6 +251,32 @@ int main(void)
   NSCAssert(!XCheckTypedEvent(display, ConfigureNotify, &event),
             @"Correct stacking must not trigger a configure loop");
   XSelectInput(display, DefaultRootWindow(display), 0);
+  /* Keep the production timer responsible for recovery during an alert;
+   * manually calling processPendingEvents would hide a run-loop mode bug. */
+  ModalTestController *controller = [[ModalTestController alloc] initWithManager:manager];
+  [controller performInitialApplicationScans];
+  NSAlert *alert = [[NSAlert alloc] init];
+  [alert setMessageText:@"Icon visibility regression"];
+  NSModalSession session = [NSApp beginModalSessionForWindow:[alert window]];
+  XLowerWindow(display, (Window)[first windowRef]);
+  XLowerWindow(display, (Window)[second windowRef]);
+  XSync(display, False);
+  NSCAssert(!IconAboveDock(display, first, dock), @"Reproduce covered icons during alert");
+  NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:1.5];
+  while ([deadline timeIntervalSinceNow] > 0)
+    {
+      [NSApp runModalSession:session];
+      [[NSRunLoop currentRunLoop] runMode:NSModalPanelRunLoopMode
+                              beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+      [NSApp updateWindows];
+    }
+  AssertIconAboveDock(display, first, dock);
+  AssertIconAboveDock(display, second, dock);
+  [NSApp endModalSession:session];
+  [[alert window] orderOut:nil];
+  RELEASE(alert);
+  [controller stopTimers];
+  RELEASE(controller);
   [NSObject cancelPreviousPerformRequestsWithTarget:manager];
   RELEASE(manager);
 

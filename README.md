@@ -140,3 +140,6 @@ reordering, and window cleanup. The test requires the XTest development library,
 It runs both on bare Xvfb and under Window Maker, checking recovery after native
 restacking hides mapped icons behind the dock and ensuring repairs do not
 generate a repeating configure-event loop.
+Native event processing also continues during modal alerts and menu tracking,
+so window-manager restacks cannot leave icons covered while those loops run.
+The icon-window test checks recovery with a modal alert open.

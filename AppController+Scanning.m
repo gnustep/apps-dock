@@ -34,6 +34,12 @@
 							  selector:@selector(processPendingEvents)
 							  userInfo:nil
 							   repeats:YES];
+          /* Alerts run a separate loop. Keep native stacking repairs alive
+           * while the modal panel is open, as well as during menu tracking. */
+          [[NSRunLoop currentRunLoop] addTimer:_x11EventTimer
+                                      forMode:NSModalPanelRunLoopMode];
+          [[NSRunLoop currentRunLoop] addTimer:_x11EventTimer
+                                      forMode:NSEventTrackingRunLoopMode];
 	}
       if (!_scanTimer)
 	{

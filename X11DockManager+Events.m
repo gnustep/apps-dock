@@ -213,7 +213,9 @@
    * batches. Queue pressure alone is not a reason to scan every window. */
   if (XPending(display) > 0)
     [self performSelector:@selector(processPendingEvents)
-               withObject:nil afterDelay:0.001];
+               withObject:nil afterDelay:0.001
+                  inModes:[NSArray arrayWithObjects:NSDefaultRunLoopMode,
+                    NSModalPanelRunLoopMode, NSEventTrackingRunLoopMode, nil]];
 }
 
 
