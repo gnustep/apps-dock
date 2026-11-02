@@ -143,6 +143,7 @@ static void PumpEvents(void)
 @interface TestDockView : DockView
 - (NSWindow *) iconWindowForItem: (DockItem *)item;
 - (NSWindow *) indicatorWindowForItem: (DockItem *)item;
+- (NSWindow *) separatorWindowAtEnd: (BOOL)atEnd;
 - (void) advanceBounce: (NSTimeInterval)elapsed;
 @end
 @implementation TestDockView
@@ -151,6 +152,11 @@ static void PumpEvents(void)
 - (NSWindow *) indicatorWindowForItem: (DockItem *)item
 {
   return [_iconWindows objectForKey:[NSString stringWithFormat:@"indicator-%p", item]];
+}
+
+- (NSWindow *) separatorWindowAtEnd: (BOOL)atEnd
+{
+  return [_iconWindows objectForKey:atEnd ? @"separator-end" : @"separator-start"];
 }
 
 - (void) advanceBounce: (NSTimeInterval)elapsed
@@ -328,6 +334,37 @@ int main(void)
   [view setItems:[NSArray arrayWithObject:b]];
   NSCAssert(![view indicatorWindowForItem:a], @"Removal closes running indicator window");
   NSCAssert(![view iconWindowForItem:a], @"Removed app releases window");
+  /* Section dividers follow pinning and orientation, with no backing panel. */
+  [view setItems:[NSArray arrayWithObjects:a, b, nil]];
+  [view setPinnedItemCount:1];
+  NSWindow *startSeparator = [view separatorWindowAtEnd:NO];
+  NSWindow *endSeparator = [view separatorWindowAtEnd:YES];
+  NSCAssert(startSeparator && endSeparator && startSeparator != endSeparator,
+            @"Unpinned section has two separate divider windows");
+  NSCAssert([startSeparator isVisible] && [endSeparator isVisible],
+            @"Both section dividers are visible");
+  NSCAssert(NSWidth([startSeparator frame]) == 1.0 &&
+            NSHeight([startSeparator frame]) > 1.0,
+            @"Horizontal dock uses a thin vertical divider");
+  NSCAssert(NSMinX([startSeparator frame]) > NSMaxX([[view iconWindowForItem:a] frame]) &&
+            NSMaxX([startSeparator frame]) <= NSMinX([second frame]) &&
+            NSMinX([endSeparator frame]) >= NSMaxX([second frame]),
+            @"Dividers bracket only the unpinned section");
+  [startSeparator display];
+  XSync((Display *)[GSCurrentServer() serverDevice], False);
+  NSCAssert(ShapeContains(display, (Window)[startSeparator windowRef], ShapeBounding, 0, 1) &&
+            !ShapeContains(display, (Window)[startSeparator windowRef], ShapeInput, 0, 1),
+            @"Divider is visible and passes pointer input through");
+  [view setHorizontal:NO];
+  NSCAssert([view separatorWindowAtEnd:NO] == startSeparator &&
+            NSHeight([startSeparator frame]) == 1.0 && NSWidth([startSeparator frame]) > 1.0,
+            @"Vertical dock reuses the divider as a thin horizontal window");
+  [view setPinnedItemCount:2];
+  NSCAssert(![view separatorWindowAtEnd:NO] && ![view separatorWindowAtEnd:YES],
+            @"No divider windows remain when every application is pinned");
+  [view setPinnedItemCount:0];
+  NSCAssert([view separatorWindowAtEnd:NO] && [view separatorWindowAtEnd:YES],
+            @"Entirely unpinned section has both dividers");
   [dock orderOut:nil];
   NSCAssert(![second isVisible], @"Hiding dock hides icons");
   [dock setContentView:nil];

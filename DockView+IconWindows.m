@@ -188,6 +188,11 @@
       [_dock drawTopTile];
     }
   else if (_kind == 4) [_dock drawDropIndicator];
+  else if (_kind == 5)
+    {
+      [[NSColor colorWithCalibratedWhite:1.0 alpha:0.55] set];
+      NSRectFill([self bounds]);
+    }
   else [_dock drawIconWindowForItem:_item];
   [image unlockFocus];
   NSRectFillUsingOperation(rect, NSCompositeClear);
@@ -239,6 +244,7 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
     (kind == 3 ? @"DockWM tile" : (kind == 4 ? @"Dock insertion marker" :
     (kind == 2 ? [NSString stringWithFormat:@"%@ state", [item title]] :
     (item ? [item title] : @"Recycler"))))];
+  if (kind == 5) [window setTitle:@"Dock section separator"];
   DockIconContentView *content = [[DockIconContentView alloc] initWithDock:dock
     item:item kind:kind];
   [window setContentView:content];
@@ -424,6 +430,31 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
         [self convertPoint:cell.origin toView:nil]];
       [window setFrame:NSMakeRect(origin.x, origin.y, cell.size.width, cell.size.height)
               display:NO];
+      if ([[self window] isVisible])
+        {
+          if (![window isVisible])
+            [window orderWindow:NSWindowAbove relativeTo:[[self window] windowNumber]];
+        }
+      else [window orderOut:nil];
+      [[window contentView] setNeedsDisplay:YES];
+    }
+  /* Bound the unpinned section with two narrow, stationary windows. */
+  for (NSUInteger edge = 0; edge < 2; edge++)
+    {
+      NSRect rect = [self sectionSeparatorRectAtEnd:edge == 1];
+      if (NSIsEmptyRect(rect)) continue;
+      NSString *key = edge == 0 ? @"separator-start" : @"separator-end";
+      [liveKeys addObject:key];
+      NSWindow *window = [_iconWindows objectForKey:key];
+      if (!window)
+        {
+          window = NewIconWindow(self, nil, 5);
+          [_iconWindows setObject:window forKey:key];
+          RELEASE(window);
+        }
+      rect.origin = [[self window] convertBaseToScreen:
+        [self convertPoint:rect.origin toView:nil]];
+      [window setFrame:rect display:NO];
       if ([[self window] isVisible])
         {
           if (![window isVisible])

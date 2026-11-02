@@ -426,18 +426,17 @@
 }
 
 
-- (void) drawSeparatorBeforeIndex: (NSUInteger)index
+- (NSRect) separatorRectBeforeIndex: (NSUInteger)index
 {
   NSPoint origin;
   NSRect previousCell;
   NSRect nextCell;
   CGFloat x;
   CGFloat y;
-  NSBezierPath *path;
 
   if (index > [_items count])
     {
-      return;
+      return NSZeroRect;
     }
 
   if (index > 0)
@@ -460,24 +459,32 @@
       nextCell = [self recyclerTileRect];
     }
 
-  path = [NSBezierPath bezierPath];
-  [path setLineWidth:1.0];
-  [[NSColor colorWithCalibratedWhite:1.0 alpha:0.55] set];
-
   if (_horizontal)
     {
-      x = floor((NSMaxX(previousCell) + NSMinX(nextCell)) / 2.0) + 0.5;
-      [path moveToPoint:NSMakePoint(x, NSMinY(nextCell) + DockSeparatorInset)];
-      [path lineToPoint:NSMakePoint(x, NSMaxY(nextCell) - DockSeparatorInset)];
+      x = floor((NSMaxX(previousCell) + NSMinX(nextCell)) / 2.0);
+      return NSMakeRect(x, NSMinY(nextCell) + DockSeparatorInset,
+                        1.0, NSHeight(nextCell) - 2.0 * DockSeparatorInset);
     }
   else
     {
-      y = floor((NSMinY(previousCell) + NSMaxY(nextCell)) / 2.0) + 0.5;
-      [path moveToPoint:NSMakePoint(NSMinX(nextCell) + DockSeparatorInset, y)];
-      [path lineToPoint:NSMakePoint(NSMaxX(nextCell) - DockSeparatorInset, y)];
+      y = floor((NSMinY(previousCell) + NSMaxY(nextCell)) / 2.0);
+      return NSMakeRect(NSMinX(nextCell) + DockSeparatorInset, y,
+                        NSWidth(nextCell) - 2.0 * DockSeparatorInset, 1.0);
     }
+}
 
-  [path stroke];
+
+- (NSRect) sectionSeparatorRectAtEnd: (BOOL)atEnd
+{
+  if (_pinnedItemCount >= [_items count]) return NSZeroRect;
+  return [self separatorRectBeforeIndex:atEnd ? [_items count] : _pinnedItemCount];
+}
+
+
+- (void) drawSeparatorBeforeIndex: (NSUInteger)index
+{
+  [[NSColor colorWithCalibratedWhite:1.0 alpha:0.55] set];
+  NSRectFill([self separatorRectBeforeIndex:index]);
 }
 
 

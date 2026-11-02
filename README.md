@@ -123,15 +123,16 @@ rediscovery, and restoring an app by dropping it back into the dock.
 ### Icon windows and bounce animation
 
 Application icons, the GNUstep tile, the Recycler, and application state dots use
-separate shaped, non-focusable windows. There is no visible dock background,
-border, or separator. State dots remain stationary while icons bounce and are
+separate shaped, non-focusable windows. There is no visible dock background
+or border. Two thin separator windows bracket the unpinned application section
+when it contains apps. State dots remain stationary while icons bounce and are
 removed when their state no longer matches the selected indicator mode.
 Icon windows move through a large vertical hop and a smaller settling hop;
 a top-edge dock bounces downward into the screen. Attention requests repeat
 until acknowledged. Existing animation preferences remain compatible.
 
 Icons receive clicks, context menus, hover, and drag input directly. Dots,
-tooltips, and the drag insertion marker pass pointer input through. On X11,
+tooltips, separators, and the drag insertion marker pass pointer input through. On X11,
 alpha-derived bounding shapes expose the desktop without requiring a compositor.
 The invisible layout owner remains for placement and screen-space reservation.
 
