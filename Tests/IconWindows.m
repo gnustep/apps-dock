@@ -142,11 +142,17 @@ static void PumpEvents(void)
 
 @interface TestDockView : DockView
 - (NSWindow *) iconWindowForItem: (DockItem *)item;
+- (NSWindow *) indicatorWindowForItem: (DockItem *)item;
 - (void) advanceBounce: (NSTimeInterval)elapsed;
 @end
 @implementation TestDockView
 - (NSWindow *) iconWindowForItem: (DockItem *)item
 { return [_iconWindows objectForKey:[NSValue valueWithPointer:item]]; }
+- (NSWindow *) indicatorWindowForItem: (DockItem *)item
+{
+  return [_iconWindows objectForKey:[NSString stringWithFormat:@"indicator-%p", item]];
+}
+
 - (void) advanceBounce: (NSTimeInterval)elapsed
 { _wiggleStartTime = [NSDate timeIntervalSinceReferenceDate] - elapsed; [self syncIconWindows]; }
 @end
@@ -182,6 +188,9 @@ int main(void)
   NSCAssert([first parentWindow] == dock, @"Icon belongs to the dock");
   NSCAssert([first isVisible], @"Icon window is visible");
   Display *display = XOpenDisplay(NULL);
+  XSetWindowBackground(display, DefaultRootWindow(display), 0x123456);
+  XClearWindow(display, DefaultRootWindow(display));
+  XSync(display, False);
   XWindowAttributes attributes;
   XSync(display, False);
   NSCAssert(XGetWindowAttributes(display, (Window)[first windowRef], &attributes), @"Native icon window exists");
@@ -205,10 +214,12 @@ int main(void)
             @"Icon pixels remain visible");
   NSCAssert(!ShapeContains(display, (Window)[first windowRef], ShapeBounding, 32, 60),
             @"Icon window does not cover the running dot");
+  NSCAssert(!ShapeContains(display, (Window)[dock windowRef], ShapeBounding, 10, 10),
+            @"Layout owner has no visible backing surface");
   int shapeCount, shapeOrdering;
   XRectangle *input = XShapeGetRectangles(display, (Window)[first windowRef],
                                         ShapeInput, &shapeCount, &shapeOrdering);
-  NSCAssert(shapeCount == 0, @"Entire icon window passes through pointer input");
+  NSCAssert(shapeCount > 0, @"Icon window receives pointer input");
   if (input) XFree(input);
   NSPoint iconCenter = NSMakePoint(NSMidX([first frame]), NSMidY([first frame]));
   int screenX = (int)iconCenter.x;
@@ -219,6 +230,15 @@ int main(void)
                                 screenY + 28, 1, 1, AllPlanes, ZPixmap);
   NSCAssert(dot && background && XGetPixel(dot, 0, 0) != XGetPixel(background, 0, 0),
             @"Running dot is visible on screen below the icon");
+  XImage *desktop = XGetImage(display, DefaultRootWindow(display), 5, 5,
+                             1, 1, AllPlanes, ZPixmap);
+  NSCAssert(desktop && XGetPixel(background, 0, 0) == XGetPixel(desktop, 0, 0),
+            @"Desktop is visible through the former dock background");
+  XDestroyImage(desktop);
+  NSWindow *indicator = [view indicatorWindowForItem:a];
+  NSCAssert(indicator && indicator != first && [indicator isVisible],
+            @"Running indicator has its own visible window");
+  NSRect indicatorRest = [indicator frame];
   XDestroyImage(dot);
   XDestroyImage(background);
   ClickRecorder *recorder = [[[ClickRecorder alloc] init] autorelease];
@@ -285,6 +305,8 @@ int main(void)
   [view startWiggleForItem:a];
   [view advanceBounce:0.275];
   NSCAssert(NSMinY([first frame]) > NSMinY(rest) + 30, @"Icon physically rises");
+  NSCAssert(NSEqualRects(indicatorRest, [indicator frame]),
+            @"Running indicator stays stationary during bounce");
   NSCAssert(NSMinX([first frame]) == NSMinX(rest), @"No horizontal wiggle");
   NSCAssert(NSEqualRects(other, [second frame]), @"Other app stays still");
   [view stopWiggle];
@@ -297,7 +319,14 @@ int main(void)
   NSRect landed = [first frame];
   [view syncIconWindows];
   NSCAssert(NSEqualRects(landed, [first frame]), @"Acknowledgement stops attention bounce");
+  [a setState:DockItemNotRunning];
+  [view setNeedsDisplay:YES];
+  NSCAssert(![view indicatorWindowForItem:a], @"Exit removes running indicator window");
+  [a setState:DockItemRunning];
+  [view setNeedsDisplay:YES];
+  NSCAssert([view indicatorWindowForItem:a], @"Restart restores running indicator window");
   [view setItems:[NSArray arrayWithObject:b]];
+  NSCAssert(![view indicatorWindowForItem:a], @"Removal closes running indicator window");
   NSCAssert(![view iconWindowForItem:a], @"Removed app releases window");
   [dock orderOut:nil];
   NSCAssert(![second isVisible], @"Hiding dock hides icons");

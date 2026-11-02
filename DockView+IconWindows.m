@@ -5,6 +5,7 @@
 #import <GNUstepGUI/GSDisplayServer.h>
 
 @implementation DockWindow
+
 - (void) orderWindow: (NSWindowOrderingMode)place relativeTo: (NSInteger)number
 {
   [super orderWindow:place relativeTo:number];
@@ -27,15 +28,19 @@
         }
     }
 }
+
 @end
 
-/* Input stays on the stationary dock so clicks, hover and drag destinations
- * do not move out from under the pointer during a bounce. */
+/* Visible icon windows forward interaction to the shared dock view. */
 @interface DockIconWindow : NSWindow
+
 @end
 @implementation DockIconWindow
+
 - (BOOL) canBecomeKeyWindow { return NO; }
+
 - (BOOL) canBecomeMainWindow { return NO; }
+
 - (void) orderWindow: (NSWindowOrderingMode)place relativeTo: (NSInteger)number
 {
   [super orderWindow:place relativeTo:number];
@@ -44,35 +49,145 @@
   if (place == NSWindowAbove)
     XRaiseWindow((Display *)[GSServerForWindow(self) serverDevice], (Window)[self windowRef]);
 }
+
 @end
 
 @interface DockIconContentView : NSView
 {
   DockView *_dock;
   DockItem *_item;
-  BOOL _tooltip;
+  NSInteger _kind;
+  NSTrackingRectTag _trackingTag;
 }
-- (id) initWithDock: (DockView *)dock item: (DockItem *)item tooltip: (BOOL)tooltip;
+
+- (id) initWithDock: (DockView *)dock item: (DockItem *)item kind: (NSInteger)kind;
+
 @end
 @implementation DockIconContentView
-- (id) initWithDock: (DockView *)dock item: (DockItem *)item tooltip: (BOOL)tooltip
+
+- (id) initWithDock: (DockView *)dock item: (DockItem *)item kind: (NSInteger)kind
 {
   self = [super initWithFrame:NSZeroRect];
-  if (self) { _dock = dock; _item = RETAIN(item); _tooltip = tooltip; }
+  if (self)
+    {
+      _dock = dock;
+      _item = RETAIN(item);
+      _kind = kind;
+      if (kind == 0 || kind == 3)
+        [self registerForDraggedTypes:[dock registeredDraggedTypes]];
+    }
   return self;
 }
-- (void) dealloc { RELEASE(_item); [super dealloc]; }
+
+- (void) dealloc { RELEASE(_item); DEALLOC; }
+
 - (BOOL) isOpaque { return NO; }
+
+- (void) setFrame: (NSRect)frame
+{
+  [super setFrame:frame];
+  if (_trackingTag) [self removeTrackingRect:_trackingTag];
+  _trackingTag = 0;
+  if (_kind == 0 || _kind == 3)
+    _trackingTag = [self addTrackingRect:[self bounds] owner:self
+                               userData:NULL assumeInside:NO];
+}
+
+- (BOOL) acceptsFirstMouse: (NSEvent *)event
+{
+  return YES;
+}
+
+- (NSEvent *) dockEvent: (NSEvent *)event
+{
+  /* Use the resting cell even when this icon is bouncing. */
+  NSPoint location = [event locationInWindow];
+  NSRect cell = _kind == 3 ? [_dock topTileRect] :
+    [_dock restingCellForItem:_item];
+  location.x += cell.origin.x;
+  location.y += cell.origin.y;
+  location = [_dock convertPoint:location toView:nil];
+  return [NSEvent mouseEventWithType:[event type] location:location
+    modifierFlags:[event modifierFlags] timestamp:[event timestamp]
+    windowNumber:[[_dock window] windowNumber] context:[event context]
+    eventNumber:[event eventNumber] clickCount:[event clickCount] pressure:[event pressure]];
+}
+
+- (void) mouseDown: (NSEvent *)event
+{
+  [_dock mouseDown:[self dockEvent:event]];
+}
+
+- (void) rightMouseDown: (NSEvent *)event
+{
+  [_dock rightMouseDown:[self dockEvent:event]];
+}
+
+- (void) mouseDragged: (NSEvent *)event
+{
+  [_dock mouseDragged:[self dockEvent:event]];
+}
+
+- (void) mouseMoved: (NSEvent *)event
+{
+  [_dock mouseMoved:[self dockEvent:event]];
+}
+
+- (void) mouseExited: (NSEvent *)event
+{
+  [_dock mouseExited:event];
+}
+
+- (NSDragOperation) draggingEntered: (id <NSDraggingInfo>)sender
+{
+  return [_dock draggingEntered:sender];
+}
+
+- (NSDragOperation) draggingUpdated: (id <NSDraggingInfo>)sender
+{
+  return [_dock draggingUpdated:sender];
+}
+
+- (void) draggingExited: (id <NSDraggingInfo>)sender
+{
+  [_dock draggingExited:sender];
+}
+
+- (BOOL) prepareForDragOperation: (id <NSDraggingInfo>)sender
+{
+  return [_dock prepareForDragOperation:sender];
+}
+
+- (BOOL) performDragOperation: (id <NSDraggingInfo>)sender
+{
+  return [_dock performDragOperation:sender];
+}
+
+- (void) concludeDragOperation: (id <NSDraggingInfo>)sender
+{
+  [_dock concludeDragOperation:sender];
+}
+
 - (void) drawRect: (NSRect)rect
 {
   /* Render on a surface with alpha, then explicitly shape the native window.
    * Clear pixels in an ordinary X11 window are not transparent without a
-   * compositor; a full-cell window otherwise covers the running indicator. */
+   * compositor. The shape exposes the desktop around each icon or dot. */
   NSImage *image = [[NSImage alloc] initWithSize:[self bounds].size];
   [image setBackgroundColor:[NSColor clearColor]];
   [image lockFocus];
   NSRectFillUsingOperation([self bounds], NSCompositeClear);
-  if (_tooltip) [_dock drawTooltip];
+  if (_kind == 1) [_dock drawTooltip];
+  else if (_kind == 2) [_dock drawIndicatorWindowForItem:_item];
+  else if (_kind == 3)
+    {
+      NSRect cell = [_dock topTileRect];
+      NSAffineTransform *transform = [NSAffineTransform transform];
+      [transform translateXBy:-cell.origin.x yBy:-cell.origin.y];
+      [transform concat];
+      [_dock drawTopTile];
+    }
+  else if (_kind == 4) [_dock drawDropIndicator];
   else [_dock drawIconWindowForItem:_item];
   [image unlockFocus];
   NSRectFillUsingOperation(rect, NSCompositeClear);
@@ -97,15 +212,16 @@
       XShapeCombineMask(display, native, ShapeBounding, 0, 0, mask, ShapeSet);
       XFreePixmap(display, mask);
     }
-  /* Do not depend on GNUstep's optional XFixes implementation of
-   * setIgnoresMouseEvents:. This also covers the tooltip overlay. */
-  XShapeCombineRectangles(display, native, ShapeInput, 0, 0, NULL, 0, ShapeSet, Unsorted);
+  /* Decorative overlays must not intercept icon input. */
+  if (_kind != 0 && _kind != 3)
+    XShapeCombineRectangles(display, native, ShapeInput, 0, 0, NULL, 0, ShapeSet, Unsorted);
   XFlush(display);
-  [image release];
+  RELEASE(image);
 }
+
 @end
 
-static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
+static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
 {
   NSWindow *window = [[DockIconWindow alloc] initWithContentRect:NSMakeRect(0, 0, 1, 1)
     styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
@@ -114,13 +230,17 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
   [window setBackgroundColor:[NSColor clearColor]];
   [window setHasShadow:NO];
   [window setLevel:NSDockWindowLevel];
-  [window setIgnoresMouseEvents:YES];
+  [window setIgnoresMouseEvents:kind != 0 && kind != 3];
+  [window setAcceptsMouseMovedEvents:YES];
   [window setExcludedFromWindowsMenu:YES];
   [window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces |
                                 NSWindowCollectionBehaviorStationary];
-  [window setTitle:tooltip ? @"Dock tooltip" : (item ? [item title] : @"Recycler")];
+  [window setTitle:kind == 1 ? @"Dock tooltip" :
+    (kind == 3 ? @"DockWM tile" : (kind == 4 ? @"Dock insertion marker" :
+    (kind == 2 ? [NSString stringWithFormat:@"%@ state", [item title]] :
+    (item ? [item title] : @"Recycler"))))];
   DockIconContentView *content = [[DockIconContentView alloc] initWithDock:dock
-    item:item tooltip:tooltip];
+    item:item kind:kind];
   [window setContentView:content];
   RELEASE(content);
   /* GNUstep's collection behavior is a stub. Set native dock/workspace
@@ -129,13 +249,13 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
   if (display)
     {
       Window native = (Window)[window windowRef];
-      /* A WM frame would intercept input even with an empty client input
-       * shape. Keep the overlay unmanaged and let DockWindow order it. */
+      /* Keep the shaped windows free of window-manager frames. */
       XSetWindowAttributes attributes;
       attributes.override_redirect = True;
       XChangeWindowAttributes(display, native, CWOverrideRedirect, &attributes);
       XShapeCombineRectangles(display, native, ShapeBounding, 0, 0, NULL, 0, ShapeSet, Unsorted);
-      XShapeCombineRectangles(display, native, ShapeInput, 0, 0, NULL, 0, ShapeSet, Unsorted);
+      if (kind != 0 && kind != 3)
+        XShapeCombineRectangles(display, native, ShapeInput, 0, 0, NULL, 0, ShapeSet, Unsorted);
       unsigned long desktop = 0xffffffffUL;
       Atom type = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
       XChangeProperty(display, native, XInternAtom(display, "_NET_WM_WINDOW_TYPE", False),
@@ -237,7 +357,13 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
   if (_syncingIconWindows || !_items) return;
   if (![self window]) { [self closeIconWindows]; return; }
   _syncingIconWindows = YES;
-  if (!_iconWindows) _iconWindows = [NSMutableDictionary new];
+  /* Retain only the layout/strut owner. It has no visible or input region;
+   * interaction belongs to the individual icon windows. */
+  Display *display = (Display *)[GSServerForWindow([self window]) serverDevice];
+  XShapeCombineRectangles(display, (Window)[[self window] windowRef],
+                         ShapeBounding, 0, 0, NULL, 0, ShapeSet, Unsorted);
+  [[self window] setHasShadow:NO];
+  if (!_iconWindows) _iconWindows = [[NSMutableDictionary alloc] init];
   NSMutableSet *liveKeys = [NSMutableSet set];
   NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
   for (NSUInteger i = 0; i <= [_items count]; i++)
@@ -272,7 +398,41 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
       else [window orderOut:nil];
       [[window contentView] setNeedsDisplay:YES];
     }
-  for (id key in [[[_iconWindows allKeys] copy] autorelease])
+  /* Indicators stay at rest while their icons bounce. The top tile and
+   * drag insertion marker also need their own visible surfaces. */
+  for (NSInteger i = -2; i < (NSInteger)[_items count]; i++)
+    {
+      DockItem *item = i >= 0 ? [_items objectAtIndex:i] : nil;
+      NSInteger kind = i == -2 ? 3 : (i == -1 ? 4 : 2);
+      id key = i == -2 ? @"top" : (i == -1 ? @"drop" :
+        [NSString stringWithFormat:@"indicator-%p", item]);
+      if (item && ([item kind] != DockItemApplication ||
+          (_runningIndicatorMode == DockRunningIndicatorModeNotRunningDots
+           ? [item state] != DockItemNotRunning
+           : [item state] == DockItemNotRunning))) continue;
+      [liveKeys addObject:key];
+      NSWindow *window = [_iconWindows objectForKey:key];
+      if (!window)
+        {
+          window = NewIconWindow(self, item, kind);
+          [_iconWindows setObject:window forKey:key];
+          RELEASE(window);
+        }
+      NSRect cell = i == -2 ? [self topTileRect] :
+        (i == -1 ? [self bounds] : [self cellRectForHoverIndex:i]);
+      NSPoint origin = [[self window] convertBaseToScreen:
+        [self convertPoint:cell.origin toView:nil]];
+      [window setFrame:NSMakeRect(origin.x, origin.y, cell.size.width, cell.size.height)
+              display:NO];
+      if ([[self window] isVisible])
+        {
+          if (![window isVisible])
+            [window orderWindow:NSWindowAbove relativeTo:[[self window] windowNumber]];
+        }
+      else [window orderOut:nil];
+      [[window contentView] setNeedsDisplay:YES];
+    }
+  for (id key in AUTORELEASE([[_iconWindows allKeys] copy]))
     if (![liveKeys containsObject:key])
       {
         NSWindow *window = [_iconWindows objectForKey:key];
@@ -309,4 +469,25 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
   else [self drawRecyclerTile];
   [NSGraphicsContext restoreGraphicsState];
 }
+
+- (NSRect) restingCellForItem: (DockItem *)item
+{
+  NSUInteger index = item ? [_items indexOfObjectIdenticalTo:item] : NSNotFound;
+  return index == NSNotFound ? [self recyclerTileRect] : [self cellRectForHoverIndex:index];
+}
+
+- (void) drawIndicatorWindowForItem: (DockItem *)item
+{
+  NSUInteger index = [_items indexOfObjectIdenticalTo:item];
+  if (index == NSNotFound) return;
+  NSRect cell = [self cellRectForHoverIndex:index];
+  NSAffineTransform *transform = [NSAffineTransform transform];
+  [NSGraphicsContext saveGraphicsState];
+  [transform translateXBy:-cell.origin.x yBy:-cell.origin.y];
+  [transform concat];
+  [self drawStateForItem:item inCell:cell];
+  [NSGraphicsContext restoreGraphicsState];
+}
+
+
 @end

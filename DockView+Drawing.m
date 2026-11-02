@@ -282,7 +282,6 @@
 {
   NSRect cell = [self topTileRect];
 
-  [self drawCellBackgroundInCell:cell];
   [self drawImage:_gnustepIcon inCell:cell size:50.0 * (_cellSize / DockCell)];
 }
 
@@ -514,40 +513,7 @@
 
 - (void) drawRect: (NSRect)dirtyRect
 {
-  NSUInteger i;
-  NSColor *backgroundColor;
-  CGFloat red = 0.0;
-  CGFloat green = 0.0;
-  CGFloat blue = 0.0;
-  CGFloat alpha = 1.0;
-
-  backgroundColor = DockViewCalibratedBackgroundColor(_backgroundColor);
-  [backgroundColor getRed:&red green:&green blue:&blue alpha:&alpha];
   NSRectFillUsingOperation(dirtyRect, NSCompositeClear);
-
-  [[NSColor colorWithCalibratedRed:red
-                             green:green
-                              blue:blue
-                             alpha:alpha * _backgroundAlpha] set];
-  NSRectFill([self bounds]);
-
-  [self drawTopTile];
-  [self drawDockSeparators];
-
-  for (i = 0; i < [_items count]; i++)
-    {
-      DockItem *item = [_items objectAtIndex:i];
-      NSPoint origin = [self cellOriginAtIndex:i];
-      NSRect cell = NSMakeRect(origin.x, origin.y, _cellSize, _cellSize);
-
-      [self drawCellBackgroundInCell:cell];
-
-      [self drawStateForItem:item inCell:cell];
-    }
-
-  [self drawDropIndicator];
-  [self drawCellBackgroundInCell:[self recyclerTileRect]];
-  [self drawDockBorder];
 }
 
 

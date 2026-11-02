@@ -159,7 +159,9 @@
 
 - (NSDragOperation) draggingEntered: (id <NSDraggingInfo>)sender
 {
-  NSPoint location = [self convertPoint:[sender draggingLocation] fromView:nil];
+  NSPoint location = [self convertPoint:[[self window] convertScreenToBase:
+    [[sender draggingDestinationWindow] convertBaseToScreen:[sender draggingLocation]]]
+    fromView:nil];
   NSPasteboard *pasteboard = [sender draggingPasteboard];
 
   [self hideTooltip];
@@ -193,7 +195,9 @@
 
 - (NSDragOperation) draggingUpdated: (id <NSDraggingInfo>)sender
 {
-  NSPoint location = [self convertPoint:[sender draggingLocation] fromView:nil];
+  NSPoint location = [self convertPoint:[[self window] convertScreenToBase:
+    [[sender draggingDestinationWindow] convertBaseToScreen:[sender draggingLocation]]]
+    fromView:nil];
 
   if ([self pasteboardHasReorderType:[sender draggingPasteboard]])
     {
@@ -250,7 +254,9 @@
 - (BOOL) performDragOperation: (id <NSDraggingInfo>)sender
 {
   NSArray *paths = [self pathsFromPasteboard:[sender draggingPasteboard]];
-  NSPoint location = [self convertPoint:[sender draggingLocation] fromView:nil];
+  NSPoint location = [self convertPoint:[[self window] convertScreenToBase:
+    [[sender draggingDestinationWindow] convertBaseToScreen:[sender draggingLocation]]]
+    fromView:nil];
   NSPasteboard *pasteboard = [sender draggingPasteboard];
   _draggingPaths = NO;
   [self setNeedsDisplay:YES];
@@ -335,7 +341,9 @@
   if (!_performedDragOperation)
     {
       NSArray *paths = [self pathsFromPasteboard:[sender draggingPasteboard]];
-      NSPoint location = [self convertPoint:[sender draggingLocation] fromView:nil];
+      NSPoint location = [self convertPoint:[[self window] convertScreenToBase:
+        [[sender draggingDestinationWindow] convertBaseToScreen:[sender draggingLocation]]]
+        fromView:nil];
       if (![self pasteboardHasReorderType:[sender draggingPasteboard]] &&
 	  [paths count])
 	{
