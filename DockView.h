@@ -140,3 +140,8 @@ typedef enum
 - (NSPoint) cellOriginAtIndex: (NSUInteger)index;
 - (NSSize) cellSize;
 @end
+
+@interface DockView (IconWindows)
+- (void) repairIconWindowStacking;
+
+@end

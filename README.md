@@ -136,4 +136,7 @@ pointer input.
 
 Run `sh Tests/run-icon-windows.sh` with an available Xvfb server to check native
 window creation, dot visibility, pointer activation (using XTest), bounce movement,
-reordering, and window cleanup. The test requires the XTest development library.
+reordering, and window cleanup. The test requires the XTest development library, Window Maker, and `xprop`.
+It runs both on bare Xvfb and under Window Maker, checking recovery after native
+restacking hides mapped icons behind the dock and ensuring repairs do not
+generate a repeating configure-event loop.

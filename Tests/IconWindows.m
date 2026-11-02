@@ -1,4 +1,5 @@
 #import "DockViewPrivate.h"
+#import "X11DockManagerPrivate.h"
 #import <X11/Xlib.h>
 #import <X11/Xutil.h>
 #import <X11/extensions/shape.h>
@@ -6,13 +7,45 @@
 #include <assert.h>
 #import <GNUstepGUI/GSDisplayServer.h>
 
+/* Use the WM frame when the dock client has been reparented. */
+static Window RootAncestor(Display *display, Window window)
+{
+  Window root, parent, *children;
+  unsigned int count;
+
+  for (;;)
+    {
+      NSCAssert(XQueryTree(display, window, &root, &parent, &children, &count),
+                @"Read window ancestry");
+      if (children) XFree(children);
+      if (parent == root) return window;
+      NSCAssert(parent != None, @"Client must belong to the root");
+      window = parent;
+    }
+}
+
+@interface StackingManager : X11DockManager
+@end
+
+@implementation StackingManager
+- (void) registerIconManager {}
+
+- (void) scanForDockApps {}
+
+- (void) handlePossiblyNewWindow: (Window)window {}
+
+- (void) scanClientWindow: (Window)window {}
+
+@end
+
 /* XQueryTree returns siblings in bottom-to-top stacking order. isVisible
  * cannot detect a mapped icon that is completely covered by the dock. */
-static void AssertIconAboveDock(Display *display, NSWindow *icon, NSWindow *dock)
+static BOOL IconAboveDock(Display *display, NSWindow *icon, NSWindow *dock)
 {
   Window root, parent, *children = NULL;
   unsigned int count = 0;
   NSInteger iconIndex = -1, dockIndex = -1;
+  Window dockAncestor = RootAncestor(display, (Window)[dock windowRef]);
   XSync((Display *)[GSCurrentServer() serverDevice], False);
   XSync(display, False);
   NSCAssert(XQueryTree(display, DefaultRootWindow(display), &root, &parent,
@@ -20,10 +53,16 @@ static void AssertIconAboveDock(Display *display, NSWindow *icon, NSWindow *dock
   for (unsigned int i = 0; i < count; i++)
     {
       if (children[i] == (Window)[icon windowRef]) iconIndex = i;
-      if (children[i] == (Window)[dock windowRef]) dockIndex = i;
+      if (children[i] == dockAncestor) dockIndex = i;
     }
   if (children) XFree(children);
-  NSCAssert(dockIndex >= 0 && iconIndex > dockIndex,
+  NSCAssert(dockIndex >= 0 && iconIndex >= 0, @"Both native windows exist");
+  return iconIndex > dockIndex;
+}
+
+static void AssertIconAboveDock(Display *display, NSWindow *icon, NSWindow *dock)
+{
+  NSCAssert(IconAboveDock(display, icon, dock),
             @"Icon must be above dock, not merely mapped");
 }
 
@@ -93,6 +132,8 @@ int main(void)
   DockItem *b = [DockItem x11ItemWithTitle:@"Second" window:0 icon:nil hidden:NO];
   [view setItems:[NSArray arrayWithObjects:a, b, nil]];
   [dock setContentView:view];
+  StackingManager *manager = [[StackingManager alloc] initWithDockView:view];
+  NSCAssert([manager start], @"Start native event observation");
   [dock orderFront:nil];
   [dock display];
   NSWindow *first = [view iconWindowForItem:a];
@@ -108,6 +149,8 @@ int main(void)
   /* Reproduce the actual startup sequence, which raises the dock twice. */
   [dock makeKeyAndOrderFront:nil];
   [dock orderFrontRegardless];
+  PumpEvents();
+  [manager processPendingEvents];
   AssertIconAboveDock(display, first, dock);
   AssertIconAboveDock(display, second, dock);
   [dock orderFront:nil];
@@ -147,6 +190,30 @@ int main(void)
   XFlush(display);
   PumpEvents();
   NSCAssert(recorder->activatedItem == a, @"Real pointer click reaches app activation");
+  /* A native restack bypasses DockWindow's orderWindow: override. Check
+   * recovery through the real event consumer, including under Window Maker. */
+  XLowerWindow(display, (Window)[first windowRef]);
+  XLowerWindow(display, (Window)[second windowRef]);
+  XRaiseWindow(display, RootAncestor(display, (Window)[dock windowRef]));
+  XSync(display, False);
+  NSCAssert([first isVisible], @"Covered icons still report visible");
+  NSCAssert(!IconAboveDock(display, first, dock), @"Reproduce a covered icon");
+  [manager processPendingEvents];
+  AssertIconAboveDock(display, first, dock);
+  AssertIconAboveDock(display, second, dock);
+  /* Once repaired, another check must not produce configure events. */
+  XSync(display, False);
+  XSelectInput(display, DefaultRootWindow(display), SubstructureNotifyMask);
+  [view repairIconWindowStacking];
+  XSync((Display *)[GSCurrentServer() serverDevice], False);
+  XSync(display, False);
+  XEvent event;
+  NSCAssert(!XCheckTypedEvent(display, ConfigureNotify, &event),
+            @"Correct stacking must not trigger a configure loop");
+  XSelectInput(display, DefaultRootWindow(display), 0);
+  [NSObject cancelPreviousPerformRequestsWithTarget:manager];
+  RELEASE(manager);
+
   NSRect rest = [first frame];
   NSRect other = [second frame];
   [view startWiggleForItem:a];

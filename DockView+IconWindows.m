@@ -150,6 +150,61 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
 
 @implementation DockView (IconWindows)
 
+- (void) repairIconWindowStacking
+{
+  NSWindow *dock = [self window];
+  Display *display;
+  Window ancestor, root, parent, *children = NULL;
+  unsigned int count, i;
+  NSInteger dockIndex = -1;
+  BOOL changed = NO;
+
+  if (!dock || ![dock isVisible] || ![_iconWindows count]) return;
+  display = (Display *)[GSServerForWindow(dock) serverDevice];
+  if (!display) return;
+  ancestor = (Window)[dock windowRef];
+  /* The managed client and our unmanaged overlays are not siblings.
+   * Compare against the WM's outermost frame, including after reparenting. */
+  for (;;)
+    {
+      if (!XQueryTree(display, ancestor, &root, &parent, &children, &count)) return;
+      if (children) XFree(children);
+      children = NULL;
+      if (parent == root) break;
+      if (parent == None) return;
+      ancestor = parent;
+    }
+  if (!XQueryTree(display, root, &root, &parent, &children, &count)) return;
+  for (i = 0; i < count; i++)
+    if (children[i] == ancestor) dockIndex = i;
+  if (dockIndex >= 0)
+    {
+      NSWindow *overlay;
+
+      for (overlay in [dock childWindows])
+        {
+          if (![overlay isKindOfClass:[DockIconWindow class]] ||
+              ![overlay isVisible]) continue;
+          for (i = 0; i < (unsigned int)dockIndex; i++)
+            if (children[i] == (Window)[overlay windowRef])
+              {
+                XWindowChanges changes;
+
+                changes.sibling = ancestor;
+                changes.stack_mode = Above;
+                XConfigureWindow(display, children[i], CWSibling | CWStackMode,
+                                 &changes);
+                changed = YES;
+                break;
+              }
+        }
+    }
+  if (children) XFree(children);
+  /* Do not raise already-correct overlays: that would generate an endless
+   * ConfigureNotify loop and could cover menus above the dock. */
+  if (changed) XFlush(display);
+}
+
 - (CGFloat) bounceOffsetAtTime: (NSTimeInterval)elapsed
 {
   /* Two ballistic arcs: a large hop and a smaller settling hop. */
@@ -238,6 +293,7 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, BOOL tooltip)
     }
   else if (_tooltipWindow) [_tooltipWindow orderOut:nil];
   _syncingIconWindows = NO;
+  [self repairIconWindowStacking];
 }
 
 - (void) drawIconWindowForItem: (DockItem *)item

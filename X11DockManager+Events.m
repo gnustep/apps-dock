@@ -27,6 +27,7 @@
   NSMutableSet *eventWindows = nil;
   NSMutableSet *iconEventWindows = nil;
   BOOL sawRelevantEvent = NO;
+  BOOL stackingMayHaveChanged = NO;
   unsigned int processedEvents = 0;
   const unsigned int maxEventsPerTick = 256;
   const NSUInteger maxWindowsPerTick = 32;
@@ -65,6 +66,7 @@
 	  sawRelevantEvent = YES;
 	  break;
 	case MapNotify:
+          stackingMayHaveChanged = YES;
 	  if (!eventWindows)
 	    {
 	      eventWindows = [NSMutableSet set];
@@ -99,6 +101,7 @@
           }
           break;
         case ReparentNotify:
+          stackingMayHaveChanged = YES;
           if (event.xreparent.parent != (Window)_hostWindow)
             {
               NSNumber *key = [NSNumber numberWithUnsignedLong:event.xreparent.window];
@@ -111,6 +114,7 @@
           break;
         case ConfigureNotify:
           {
+            stackingMayHaveChanged = YES;
             NSNumber *key = [NSNumber numberWithUnsignedLong:event.xconfigure.window];
             NSValue *frame = [_dockedWindowFrames objectForKey:key];
             if (frame && !NSEqualRects([frame rectValue],
@@ -155,6 +159,12 @@
 	  break;
 	}
     }
+
+  /* Window-manager restacks bypass NSWindow's orderWindow: override.
+   * Coalesce repairs and let the view change only incorrect stacking. */
+  if (stackingMayHaveChanged &&
+      [_dockView respondsToSelector:@selector(repairIconWindowStacking)])
+    [_dockView repairIconWindowStacking];
 
   if ([eventWindows count] > 0)
     {
