@@ -87,74 +87,63 @@
 }
 
 
-- (void) drawTooltip
+- (NSDictionary *) tooltipTextAttributes
+{
+  NSMutableParagraphStyle *style = AUTORELEASE([[NSMutableParagraphStyle alloc] init]);
+  [style setLineBreakMode:NSLineBreakByTruncatingTail];
+  return [NSDictionary dictionaryWithObjectsAndKeys:
+    [NSFont systemFontOfSize:11.0], NSFontAttributeName,
+    [NSColor whiteColor], NSForegroundColorAttributeName,
+    style, NSParagraphStyleAttributeName, nil];
+}
+
+
+- (NSRect) tooltipWindowFrame
 {
   NSString *title = [self tooltipTitleForHoverIndex:_tooltipItemIndex];
-  NSRect cell;
-  NSDictionary *attrs;
-  NSSize textSize;
-  CGFloat padX = 7.0;
-  CGFloat padY = 4.0;
-  NSRect tooltipRect;
-  NSPoint textPoint;
-  NSRect bounds = [self bounds];
+  NSRect cell = [self cellRectForHoverIndex:_tooltipItemIndex];
+  if (![title length] || NSIsEmptyRect(cell) || ![self window]) return NSZeroRect;
 
-  if (![title length])
-    {
-      return;
-    }
+  NSSize textSize = [title sizeWithAttributes:[self tooltipTextAttributes]];
+  NSScreen *screen = [[self window] screen];
+  if (!screen) screen = [NSScreen mainScreen];
+  NSRect screenFrame = NSInsetRect([screen frame], 4.0, 4.0);
+  NSRect frame = NSMakeRect(0.0, 0.0,
+    MIN(ceil(textSize.width) + 14.0, NSWidth(screenFrame)),
+    ceil(textSize.height) + 8.0);
+  cell.origin = [[self window] convertBaseToScreen:
+    [self convertPoint:cell.origin toView:nil]];
 
-  cell = [self cellRectForHoverIndex:_tooltipItemIndex];
-  if (NSIsEmptyRect(cell))
-    {
-      return;
-    }
-
-  attrs = [NSDictionary dictionaryWithObjectsAndKeys:
-			    [NSFont systemFontOfSize:11.0], NSFontAttributeName,
-			[NSColor whiteColor], NSForegroundColorAttributeName,
-			nil];
-  textSize = [title sizeWithAttributes:attrs];
-
-  tooltipRect = NSMakeRect(0.0, 0.0,
-                           textSize.width + padX * 2.0,
-                           textSize.height + padY * 2.0);
+  /* Place the label beside the dock, toward the interior of the screen. */
   if (_horizontal)
     {
-      tooltipRect.origin.x = NSMidX(cell) - NSWidth(tooltipRect) / 2.0;
-      tooltipRect.origin.y = NSMaxY(cell) - NSHeight(tooltipRect) - 2.0;
+      frame.origin.x = NSMidX(cell) - NSWidth(frame) / 2.0;
+      frame.origin.y = NSMidY([[self window] frame]) > NSMidY(screenFrame)
+        ? NSMinY(cell) - NSHeight(frame) - 6.0 : NSMaxY(cell) + 6.0;
     }
   else
     {
-      tooltipRect.origin.x = NSMaxX(cell) - NSWidth(tooltipRect) - 2.0;
-      tooltipRect.origin.y = NSMidY(cell) - NSHeight(tooltipRect) / 2.0;
+      frame.origin.x = NSMidX([[self window] frame]) > NSMidX(screenFrame)
+        ? NSMinX(cell) - NSWidth(frame) - 6.0 : NSMaxX(cell) + 6.0;
+      frame.origin.y = NSMidY(cell) - NSHeight(frame) / 2.0;
     }
+  frame.origin.x = floor(MAX(NSMinX(screenFrame),
+    MIN(frame.origin.x, NSMaxX(screenFrame) - NSWidth(frame))));
+  frame.origin.y = floor(MAX(NSMinY(screenFrame),
+    MIN(frame.origin.y, NSMaxY(screenFrame) - NSHeight(frame))));
+  return frame;
+}
 
-  if (NSMinX(tooltipRect) < NSMinX(bounds) + 2.0)
-    {
-      tooltipRect.origin.x = NSMinX(bounds) + 2.0;
-    }
-  if (NSMaxX(tooltipRect) > NSMaxX(bounds) - 2.0)
-    {
-      tooltipRect.origin.x = NSMaxX(bounds) - NSWidth(tooltipRect) - 2.0;
-    }
-  if (NSMinY(tooltipRect) < NSMinY(bounds) + 2.0)
-    {
-      tooltipRect.origin.y = NSMinY(bounds) + 2.0;
-    }
-  if (NSMaxY(tooltipRect) > NSMaxY(bounds) - 2.0)
-    {
-      tooltipRect.origin.y = NSMaxY(bounds) - NSHeight(tooltipRect) - 2.0;
-    }
 
-  [[NSColor colorWithCalibratedWhite:0.0 alpha:0.82] set];
-  [[NSBezierPath bezierPathWithRoundedRect:tooltipRect
-                                   xRadius:4.0
-                                   yRadius:4.0] fill];
-
-  textPoint = NSMakePoint(NSMinX(tooltipRect) + padX,
-                          NSMinY(tooltipRect) + padY);
-  [title drawAtPoint:textPoint withAttributes:attrs];
+- (void) drawTooltip
+{
+  NSString *title = [self tooltipTitleForHoverIndex:_tooltipItemIndex];
+  if (![title length]) return;
+  NSRect rect = [[_tooltipWindow contentView] bounds];
+  [[NSColor colorWithCalibratedWhite:0.22 alpha:1.0] set];
+  [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:4.0 yRadius:4.0] fill];
+  [title drawInRect:NSInsetRect(rect, 7.0, 4.0)
+    withAttributes:[self tooltipTextAttributes]];
 }
 
 

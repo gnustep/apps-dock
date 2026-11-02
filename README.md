@@ -129,7 +129,14 @@ when it contains apps. State dots remain stationary while icons bounce and are
 removed when their state no longer matches the selected indicator mode.
 Icon windows move through a large vertical hop and a smaller settling hop;
 a top-edge dock bounces downward into the screen. Attention requests repeat
-until acknowledged. Existing animation preferences remain compatible.
+until acknowledged. Bounce frames move the existing buffered windows without
+redrawing icons or rebuilding their shapes. The drop marker window exists only
+during a drag. Rendered overlays are cached: unchanged refreshes and exposure
+events reuse their images, while icon, badge, label, and size changes refresh
+the affected surfaces. Existing animation preferences remain compatible.
+
+App names appear in compact tooltip windows beside the hovered icon, toward the
+interior of the screen. Labels stay within the screen edges.
 
 Icons receive clicks, context menus, hover, and drag input directly. Dots,
 tooltips, separators, and the drag insertion marker pass pointer input through. On X11,

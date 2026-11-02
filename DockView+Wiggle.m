@@ -28,7 +28,7 @@
   DESTROY(_wiggleItem);
   _wiggleStartTime = 0.0;
   _wiggleRepeatsUntilAcknowledged = NO;
-  [self setNeedsDisplay:YES];
+  [self updateIconWindowPositions];
 }
 
 
@@ -54,7 +54,7 @@
       return;
     }
 
-  [self setNeedsDisplay:YES];
+  [self updateIconWindowPositions];
 }
 
 
@@ -76,7 +76,7 @@
                                                 userInfo:nil
 						 repeats:YES];
   _wiggleTimer = RETAIN(_wiggleTimer);
-  [self setNeedsDisplay:YES];
+  [self updateIconWindowPositions];
 }
 
 
@@ -106,7 +106,7 @@
   [_recyclerWiggleTimer invalidate];
   DESTROY(_recyclerWiggleTimer);
   _recyclerWiggleStartTime = 0.0;
-  [self setNeedsDisplay:YES];
+  [self updateIconWindowPositions];
 }
 
 
@@ -121,7 +121,7 @@
       return;
     }
 
-  [self setNeedsDisplay:YES];
+  [self updateIconWindowPositions];
 }
 
 
@@ -136,7 +136,7 @@
                                                         userInfo:nil
                                                          repeats:YES];
   _recyclerWiggleTimer = RETAIN(_recyclerWiggleTimer);
-  [self setNeedsDisplay:YES];
+  [self updateIconWindowPositions];
 }
 
 

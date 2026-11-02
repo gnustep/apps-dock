@@ -141,6 +141,12 @@ static void PumpEvents(void)
 }
 
 @interface TestDockView : DockView
+{
+  NSUInteger _iconRenderCount;
+}
+
+- (NSUInteger) iconRenderCount;
+- (NSWindow *) showNameForIndex: (NSInteger)index;
 - (NSWindow *) iconWindowForItem: (DockItem *)item;
 - (NSWindow *) indicatorWindowForItem: (DockItem *)item;
 - (NSWindow *) separatorWindowAtEnd: (BOOL)atEnd;
@@ -160,7 +166,28 @@ static void PumpEvents(void)
 }
 
 - (void) advanceBounce: (NSTimeInterval)elapsed
-{ _wiggleStartTime = [NSDate timeIntervalSinceReferenceDate] - elapsed; [self syncIconWindows]; }
+{
+  _wiggleStartTime = [NSDate timeIntervalSinceReferenceDate] - elapsed;
+  [self stepWiggle:nil];
+}
+
+- (NSWindow *) showNameForIndex: (NSInteger)index
+{
+  _hoveredItemIndex = index;
+  [self showTooltip:nil];
+  return _tooltipWindow;
+}
+
+- (NSUInteger) iconRenderCount
+{
+  return _iconRenderCount;
+}
+
+- (void) drawIconWindowForItem: (DockItem *)item
+{
+  _iconRenderCount++;
+  [super drawIconWindowForItem:item];
+}
 @end
 
 int main(void)
@@ -308,7 +335,16 @@ int main(void)
 
   NSRect rest = [first frame];
   NSRect other = [second frame];
+  for (NSWindow *child in [dock childWindows]) [child displayIfNeeded];
+  NSUInteger rendersBeforeBounce = [view iconRenderCount];
   [view startWiggleForItem:a];
+  for (NSUInteger tick = 1; tick <= 8; tick++)
+    {
+      [view advanceBounce:0.02 * tick];
+      for (NSWindow *child in [dock childWindows]) [child displayIfNeeded];
+    }
+  NSCAssert([view iconRenderCount] == rendersBeforeBounce,
+            @"Animation moves buffered windows without repainting icons");
   [view advanceBounce:0.275];
   NSCAssert(NSMinY([first frame]) > NSMinY(rest) + 30, @"Icon physically rises");
   NSCAssert(NSEqualRects(indicatorRest, [indicator frame]),
@@ -317,6 +353,20 @@ int main(void)
   NSCAssert(NSEqualRects(other, [second frame]), @"Other app stays still");
   [view stopWiggle];
   NSCAssert(NSEqualRects(rest, [first frame]), @"Icon lands exactly at rest");
+  for (NSUInteger refresh = 0; refresh < 10; refresh++)
+    {
+      [view setNeedsDisplay:YES];
+      for (NSWindow *child in [dock childWindows]) [child displayIfNeeded];
+    }
+  [first display];
+  NSCAssert([view iconRenderCount] == rendersBeforeBounce,
+            @"Unchanged refreshes and exposures reuse rendered icons");
+  [a setBadgeLabel:@"2"];
+  [view setNeedsDisplay:YES];
+  for (NSWindow *child in [dock childWindows]) [child displayIfNeeded];
+  NSCAssert([view iconRenderCount] == rendersBeforeBounce + 1,
+            @"Badge changes repaint only the affected icon");
+  [a setBadgeLabel:nil];
   [view setItems:[NSArray arrayWithObjects:b, a, nil]];
   NSCAssert([view iconWindowForItem:a] == first, @"Reorder preserves window identity");
   NSCAssert(NSMinX([first frame]) > NSMinX(rest), @"Reorder moves window");
@@ -334,6 +384,20 @@ int main(void)
   [view setItems:[NSArray arrayWithObject:b]];
   NSCAssert(![view indicatorWindowForItem:a], @"Removal closes running indicator window");
   NSCAssert(![view iconWindowForItem:a], @"Removed app releases window");
+  NSWindow *nameWindow = [view showNameForIndex:0];
+  NSCAssert(nameWindow && nameWindow != second && [nameWindow isVisible],
+            @"App name has a separate visible window");
+  NSCAssert(NSWidth([nameWindow frame]) < NSWidth([dock frame]) &&
+            NSHeight([nameWindow frame]) < NSHeight([second frame]),
+            @"Name window fits the label rather than the whole dock");
+  NSCAssert(!NSIntersectsRect([nameWindow frame], [second frame]),
+            @"Name appears beside the icon rather than over it");
+  [nameWindow display];
+  XSync((Display *)[GSCurrentServer() serverDevice], False);
+  NSCAssert(!ShapeContains(display, (Window)[nameWindow windowRef], ShapeInput, 8, 8),
+            @"Name window does not intercept pointer input");
+  [view hideTooltip];
+  NSCAssert(![nameWindow isVisible], @"Name window hides when hover ends");
   /* Section dividers follow pinning and orientation, with no backing panel. */
   [view setItems:[NSArray arrayWithObjects:a, b, nil]];
   [view setPinnedItemCount:1];

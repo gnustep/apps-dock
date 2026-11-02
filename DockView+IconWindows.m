@@ -58,9 +58,14 @@
   DockItem *_item;
   NSInteger _kind;
   NSTrackingRectTag _trackingTag;
+  NSData *_shapeData;
+  NSSize _shapeSize;
+  NSImage *_renderedImage;
+  NSArray *_renderState;
 }
 
 - (id) initWithDock: (DockView *)dock item: (DockItem *)item kind: (NSInteger)kind;
+- (void) refreshRendering;
 
 @end
 @implementation DockIconContentView
@@ -79,12 +84,20 @@
   return self;
 }
 
-- (void) dealloc { RELEASE(_item); DEALLOC; }
+- (void) dealloc
+{
+  RELEASE(_item);
+  RELEASE(_shapeData);
+  RELEASE(_renderedImage);
+  RELEASE(_renderState);
+  DEALLOC;
+}
 
 - (BOOL) isOpaque { return NO; }
 
 - (void) setFrame: (NSRect)frame
 {
+  if (NSEqualRects(frame, [self frame])) return;
   [super setFrame:frame];
   if (_trackingTag) [self removeTrackingRect:_trackingTag];
   _trackingTag = 0;
@@ -168,8 +181,27 @@
   [_dock concludeDragOperation:sender];
 }
 
+- (void) refreshRendering
+{
+  NSArray *state = [_dock renderStateForItem:_item kind:_kind];
+  if (![_renderState isEqual:state])
+    {
+      ASSIGNCOPY(_renderState, state);
+      DESTROY(_renderedImage);
+      [self setNeedsDisplay:YES];
+    }
+}
+
 - (void) drawRect: (NSRect)rect
 {
+  /* Expose events reuse the pixels and shape until appearance changes. */
+  if (_renderedImage && NSEqualSizes([_renderedImage size], [self bounds].size))
+    {
+      NSRectFillUsingOperation(rect, NSCompositeClear);
+      [_renderedImage drawInRect:[self bounds] fromRect:NSZeroRect
+                      operation:NSCompositeSourceOver fraction:1.0];
+      return;
+    }
   /* Render on a surface with alpha, then explicitly shape the native window.
    * Clear pixels in an ordinary X11 window are not transparent without a
    * compositor. The shape exposes the desktop around each icon or dot. */
@@ -212,15 +244,20 @@
         for (NSUInteger x = 0; x < width; x++)
           if ([[bitmap colorAtX:x y:y] alphaComponent] > 0.0)
             bits[y * stride + x / 8] |= 1 << (x % 8);
-      Pixmap mask = XCreateBitmapFromData(display, native,
-        (const char *)bits, (unsigned int)width, (unsigned int)height);
-      XShapeCombineMask(display, native, ShapeBounding, 0, 0, mask, ShapeSet);
-      XFreePixmap(display, mask);
+      NSSize shapeSize = NSMakeSize(width, height);
+      /* Exposure and color-only updates need not send another shape to X11. */
+      if (!NSEqualSizes(_shapeSize, shapeSize) || ![_shapeData isEqualToData:maskData])
+        {
+          Pixmap mask = XCreateBitmapFromData(display, native,
+            (const char *)bits, (unsigned int)width, (unsigned int)height);
+          XShapeCombineMask(display, native, ShapeBounding, 0, 0, mask, ShapeSet);
+          XFreePixmap(display, mask);
+          ASSIGNCOPY(_shapeData, maskData);
+          _shapeSize = shapeSize;
+        }
     }
-  /* Decorative overlays must not intercept icon input. */
-  if (_kind != 0 && _kind != 3)
-    XShapeCombineRectangles(display, native, ShapeInput, 0, 0, NULL, 0, ShapeSet, Unsorted);
   XFlush(display);
+  ASSIGN(_renderedImage, image);
   RELEASE(image);
 }
 
@@ -358,6 +395,44 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
     }
 }
 
+/* Animation changes only position. Repainting here would regenerate every
+ * icon's bitmap and native shape sixty times a second. */
+- (void) positionIconWindow: (NSWindow *)window
+                    inCell: (NSRect)cell
+               bounceStart: (NSTimeInterval)start
+                      time: (NSTimeInterval)now
+{
+  NSPoint origin = [[self window] convertBaseToScreen:
+    [self convertPoint:cell.origin toView:nil]];
+  CGFloat offset = start ? [self bounceOffsetAtTime:now - start] : 0.0;
+  NSRect screen = [[[self window] screen] frame];
+  BOOL atTop = _horizontal && NSMaxY([[self window] frame]) >= NSMaxY(screen) - 1.0;
+  NSRect frame;
+
+  origin.y += atTop ? -offset : offset;
+  origin.x = round(origin.x);
+  origin.y = round(origin.y);
+  frame = NSMakeRect(origin.x, origin.y, cell.size.width, cell.size.height);
+  if (!NSEqualRects([window frame], frame)) [window setFrame:frame display:NO];
+}
+
+- (void) updateIconWindowPositions
+{
+  NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+  if (![self window]) return;
+  for (NSUInteger i = 0; i <= [_items count]; i++)
+    {
+      DockItem *item = i < [_items count] ? [_items objectAtIndex:i] : nil;
+      id key = item ? (id)[NSValue valueWithPointer:item] : (id)@"recycler";
+      NSWindow *window = [_iconWindows objectForKey:key];
+      if (!window) continue;
+      NSRect cell = item ? [self cellRectForHoverIndex:i] : [self recyclerTileRect];
+      NSTimeInterval start = item ? (item == _wiggleItem ? _wiggleStartTime : 0.0)
+                                 : _recyclerWiggleStartTime;
+      [self positionIconWindow:window inCell:cell bounceStart:start time:now];
+    }
+}
+
 - (void) syncIconWindows
 {
   if (_syncingIconWindows || !_items) return;
@@ -365,11 +440,14 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
   _syncingIconWindows = YES;
   /* Retain only the layout/strut owner. It has no visible or input region;
    * interaction belongs to the individual icon windows. */
-  Display *display = (Display *)[GSServerForWindow([self window]) serverDevice];
-  XShapeCombineRectangles(display, (Window)[[self window] windowRef],
-                         ShapeBounding, 0, 0, NULL, 0, ShapeSet, Unsorted);
-  [[self window] setHasShadow:NO];
-  if (!_iconWindows) _iconWindows = [[NSMutableDictionary alloc] init];
+  if (!_iconWindows)
+    {
+      Display *display = (Display *)[GSServerForWindow([self window]) serverDevice];
+      XShapeCombineRectangles(display, (Window)[[self window] windowRef],
+                             ShapeBounding, 0, 0, NULL, 0, ShapeSet, Unsorted);
+      [[self window] setHasShadow:NO];
+      _iconWindows = [[NSMutableDictionary alloc] init];
+    }
   NSMutableSet *liveKeys = [NSMutableSet set];
   NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
   for (NSUInteger i = 0; i <= [_items count]; i++)
@@ -385,29 +463,23 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
           RELEASE(window);
         }
       NSRect cell = item ? [self cellRectForHoverIndex:i] : [self recyclerTileRect];
-      NSPoint origin = [[self window] convertBaseToScreen:
-        [self convertPoint:cell.origin toView:nil]];
       NSTimeInterval start = item ? (item == _wiggleItem ? _wiggleStartTime : 0.0)
                                  : _recyclerWiggleStartTime;
-      CGFloat offset = start ? [self bounceOffsetAtTime:now - start] : 0.0;
-      /* A top dock bounces downward into the screen. Other docks rise. */
-      NSRect screen = [[[self window] screen] frame];
-      BOOL atTop = _horizontal && NSMaxY([[self window] frame]) >= NSMaxY(screen) - 1.0;
-      origin.y += atTop ? -offset : offset;
-      [window setFrame:NSMakeRect(origin.x, origin.y, cell.size.width, cell.size.height)
-              display:NO];
+      [self positionIconWindow:window inCell:cell bounceStart:start time:now];
       if ([[self window] isVisible])
         {
           if (![window isVisible])
             [window orderWindow:NSWindowAbove relativeTo:[[self window] windowNumber]];
         }
-      else [window orderOut:nil];
-      [[window contentView] setNeedsDisplay:YES];
+      else if ([window isVisible]) [window orderOut:nil];
+      [(DockIconContentView *)[window contentView] refreshRendering];
     }
   /* Indicators stay at rest while their icons bounce. The top tile and
    * drag insertion marker also need their own visible surfaces. */
   for (NSInteger i = -2; i < (NSInteger)[_items count]; i++)
     {
+      if (i == -1 && ((!_draggingPaths && _draggedItemIndex == NSNotFound) ||
+                       _dropIndex == NSNotFound || _dropIndex > [_items count])) continue;
       DockItem *item = i >= 0 ? [_items objectAtIndex:i] : nil;
       NSInteger kind = i == -2 ? 3 : (i == -1 ? 4 : 2);
       id key = i == -2 ? @"top" : (i == -1 ? @"drop" :
@@ -428,15 +500,15 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
         (i == -1 ? [self bounds] : [self cellRectForHoverIndex:i]);
       NSPoint origin = [[self window] convertBaseToScreen:
         [self convertPoint:cell.origin toView:nil]];
-      [window setFrame:NSMakeRect(origin.x, origin.y, cell.size.width, cell.size.height)
-              display:NO];
+      NSRect frame = NSMakeRect(origin.x, origin.y, cell.size.width, cell.size.height);
+      if (!NSEqualRects([window frame], frame)) [window setFrame:frame display:NO];
       if ([[self window] isVisible])
         {
           if (![window isVisible])
             [window orderWindow:NSWindowAbove relativeTo:[[self window] windowNumber]];
         }
-      else [window orderOut:nil];
-      [[window contentView] setNeedsDisplay:YES];
+      else if ([window isVisible]) [window orderOut:nil];
+      [(DockIconContentView *)[window contentView] refreshRendering];
     }
   /* Bound the unpinned section with two narrow, stationary windows. */
   for (NSUInteger edge = 0; edge < 2; edge++)
@@ -454,14 +526,14 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
         }
       rect.origin = [[self window] convertBaseToScreen:
         [self convertPoint:rect.origin toView:nil]];
-      [window setFrame:rect display:NO];
+      if (!NSEqualRects([window frame], rect)) [window setFrame:rect display:NO];
       if ([[self window] isVisible])
         {
           if (![window isVisible])
             [window orderWindow:NSWindowAbove relativeTo:[[self window] windowNumber]];
         }
-      else [window orderOut:nil];
-      [[window contentView] setNeedsDisplay:YES];
+      else if ([window isVisible]) [window orderOut:nil];
+      [(DockIconContentView *)[window contentView] refreshRendering];
     }
   for (id key in AUTORELEASE([[_iconWindows allKeys] copy]))
     if (![liveKeys containsObject:key])
@@ -472,19 +544,82 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
         [_iconWindows removeObjectForKey:key];
       }
   if (_wiggleItem && ![_items containsObject:_wiggleItem]) [self stopWiggle];
-  if (_tooltipItemIndex != DockHoverNone && [[self window] isVisible])
+  NSRect tooltipFrame = [self tooltipWindowFrame];
+  if (!NSIsEmptyRect(tooltipFrame) && [[self window] isVisible])
     {
       if (!_tooltipWindow) _tooltipWindow = NewIconWindow(self, nil, YES);
-      NSPoint origin = [[self window] convertBaseToScreen:
-        [self convertPoint:[self bounds].origin toView:nil]];
-      [_tooltipWindow setFrame:NSMakeRect(origin.x, origin.y,
-        NSWidth([self bounds]), NSHeight([self bounds])) display:NO];
-      [_tooltipWindow orderFront:nil];
-      [[_tooltipWindow contentView] setNeedsDisplay:YES];
+      if (!NSEqualRects([_tooltipWindow frame], tooltipFrame))
+        [_tooltipWindow setFrame:tooltipFrame display:NO];
+      if (![_tooltipWindow isVisible]) [_tooltipWindow orderFront:nil];
+      [(DockIconContentView *)[_tooltipWindow contentView] refreshRendering];
     }
-  else if (_tooltipWindow) [_tooltipWindow orderOut:nil];
+  else if ([_tooltipWindow isVisible]) [_tooltipWindow orderOut:nil];
   _syncingIconWindows = NO;
   [self repairIconWindowStacking];
+}
+
+/* Describe only inputs used to draw each surface. Position-only changes and
+ * unrelated application updates must not invalidate every overlay. */
+- (NSArray *) renderStateForItem: (DockItem *)item kind: (NSInteger)kind
+{
+  NSMutableArray *state = [NSMutableArray array];
+  NSNull *empty = [NSNull null];
+  [state addObject:[NSNumber numberWithDouble:_cellSize]];
+  if (kind == 0 && item)
+    {
+      NSUInteger index = [_items indexOfObjectIdenticalTo:item];
+      NSRect cell = [self restingCellForItem:item];
+      CGFloat size = [self iconSizeForItemAtIndex:index];
+      NSRect iconRect = [self iconRectInCell:cell size:size];
+      iconRect.origin.x -= cell.origin.x;
+      iconRect.origin.y -= cell.origin.y;
+      [state addObject:[item icon] ? (id)[item icon] : empty];
+      [state addObject:[item title] ? (id)[item title] : empty];
+      [state addObject:[item badgeLabel] ? (id)[item badgeLabel] : empty];
+      [state addObject:[NSNumber numberWithBool:[item isMissing]]];
+      [state addObject:[NSNumber numberWithDouble:size]];
+      [state addObject:[NSValue valueWithRect:iconRect]];
+    }
+  else if (kind == 0)
+    {
+      NSImage *image = [self standardRecyclerIcon];
+      if (!image) image = _recyclerIcon;
+      [state addObject:image ? (id)image : empty];
+      [state addObject:[NSNumber numberWithBool:_recyclerHasContents]];
+    }
+  else if (kind == 1)
+    {
+      NSString *title = [self tooltipTitleForHoverIndex:_tooltipItemIndex];
+      [state addObject:title ? (id)title : empty];
+      [state addObject:[NSValue valueWithSize:[_tooltipWindow frame].size]];
+    }
+  else if (kind == 2)
+    {
+      [state addObject:[NSNumber numberWithInteger:_runningIndicatorMode]];
+    }
+  else if (kind == 3)
+    {
+      [state addObject:_gnustepIcon ? (id)_gnustepIcon : empty];
+    }
+  else if (kind == 4)
+    {
+      [state addObject:[NSNumber numberWithUnsignedInteger:_dropIndex]];
+      [state addObject:[NSNumber numberWithBool:_horizontal]];
+      [state addObject:[NSNumber numberWithDouble:_dockGap]];
+      [state addObject:[NSNumber numberWithDouble:_dockPad]];
+      [state addObject:[NSValue valueWithSize:[self bounds].size]];
+    }
+  if ((kind == 0 && !item) || kind == 3)
+    {
+      NSRect cell = kind == 3 ? [self topTileRect] : [self recyclerTileRect];
+      NSRect iconRect = [self iconRectInCell:cell
+        size:(kind == 3 ? 50.0 : 46.0) * (_cellSize / DockCell)];
+      iconRect.origin.x -= cell.origin.x;
+      iconRect.origin.y -= cell.origin.y;
+      [state addObject:[NSValue valueWithRect:iconRect]];
+    }
+  if (kind == 5) [state addObject:[NSNumber numberWithBool:_horizontal]];
+  return state;
 }
 
 - (void) drawIconWindowForItem: (DockItem *)item

@@ -93,7 +93,13 @@ DockViewCalibratedBackgroundColor(NSColor *color)
 - (void) setItems: (NSArray *)items;
 - (void) setPinnedItemCount: (NSUInteger)count;
 - (void) syncIconWindows;
+- (void) updateIconWindowPositions;
+- (void) positionIconWindow: (NSWindow *)window
+                    inCell: (NSRect)cell
+               bounceStart: (NSTimeInterval)start
+                      time: (NSTimeInterval)now;
 - (void) closeIconWindows;
+- (NSArray *) renderStateForItem: (DockItem *)item kind: (NSInteger)kind;
 - (void) drawIconWindowForItem: (DockItem *)item;
 - (NSRect) restingCellForItem: (DockItem *)item;
 - (void) drawIndicatorWindowForItem: (DockItem *)item;
@@ -153,6 +159,8 @@ DockViewCalibratedBackgroundColor(NSColor *color)
 - (void) quitItem: (id)sender;
 - (void) emptyRecycler: (id)sender;
 - (void) scheduleTooltipForHoverIndex: (NSInteger)index;
+- (NSDictionary *) tooltipTextAttributes;
+- (NSRect) tooltipWindowFrame;
 - (void) drawTooltip;
 - (void) showTooltip: (NSTimer *)timer;
 - (NSArray *) pathsFromPasteboard: (NSPasteboard *)pb;
