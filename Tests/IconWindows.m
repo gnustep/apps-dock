@@ -145,6 +145,7 @@ static void PumpEvents(void)
   NSUInteger _iconRenderCount;
 }
 
+- (void) setTileFixture: (NSImage *)image;
 - (NSUInteger) iconRenderCount;
 - (NSWindow *) showNameForIndex: (NSInteger)index;
 - (NSWindow *) iconWindowForItem: (DockItem *)item;
@@ -153,6 +154,8 @@ static void PumpEvents(void)
 - (void) advanceBounce: (NSTimeInterval)elapsed;
 @end
 @implementation TestDockView
+- (void) setTileFixture: (NSImage *)image
+{ ASSIGN(_cellBackgroundImage, image); }
 - (NSWindow *) iconWindowForItem: (DockItem *)item
 { return [_iconWindows objectForKey:[NSValue valueWithPointer:item]]; }
 - (NSWindow *) indicatorWindowForItem: (DockItem *)item
@@ -419,6 +422,21 @@ int main(void)
   NSCAssert(ShapeContains(display, (Window)[startSeparator windowRef], ShapeBounding, 0, 1) &&
             !ShapeContains(display, (Window)[startSeparator windowRef], ShapeInput, 0, 1),
             @"Divider is visible and passes pointer input through");
+  /* Tile toggles must invalidate cached pixels and native shapes. */
+  first = [view iconWindowForItem:a];
+  [view setTileFixture:fixture];
+  [view setUsesCellBackgroundTile:YES];
+  for (NSWindow *child in [dock childWindows]) [child displayIfNeeded];
+  XSync((Display *)[GSCurrentServer() serverDevice], False);
+  NSCAssert(ShapeContains(display, (Window)[first windowRef], ShapeBounding, 1, 1),
+            @"Enabled tile fills the icon cell");
+  NSCAssert(!ShapeContains(display, (Window)[dock windowRef], ShapeBounding, 10, 10),
+            @"Tiles leave the dock backing transparent");
+  [view setUsesCellBackgroundTile:NO];
+  for (NSWindow *child in [dock childWindows]) [child displayIfNeeded];
+  XSync((Display *)[GSCurrentServer() serverDevice], False);
+  NSCAssert(!ShapeContains(display, (Window)[first windowRef], ShapeBounding, 1, 1),
+            @"Disabling tiles restores the icon-only shape");
   [view setHorizontal:NO];
   NSCAssert([view separatorWindowAtEnd:NO] == startSeparator &&
             NSHeight([startSeparator frame]) == 1.0 && NSWidth([startSeparator frame]) > 1.0,
@@ -429,6 +447,26 @@ int main(void)
   [view setPinnedItemCount:0];
   NSCAssert([view separatorWindowAtEnd:NO] && [view separatorWindowAtEnd:YES],
             @"Entirely unpinned section has both dividers");
+  /* Empty slots change geometry, but never become clickable dock items. */
+  [view setFrame:NSMakeRect(0, 0, 420, 420)];
+  [a setPinned:YES];
+  [a setGapBefore:YES];
+  [view setHorizontal:YES];
+  NSPoint compact = [view cellOriginAtIndex:0];
+  [view setAllowsGaps:YES];
+  NSPoint spaced = [view cellOriginAtIndex:0];
+  NSCAssert(spaced.x - compact.x == [view cellSize].width + 2,
+            @"Horizontal gap occupies one full slot");
+  NSPoint emptyCenter = NSMakePoint(compact.x + 32, compact.y + 32);
+  NSCAssert([view indexAtPoint:emptyCenter] == NSNotFound &&
+            [view insertionIndexAtPoint:emptyCenter] == 0,
+            @"Gap has no item and preserves insertion order");
+  [view setHorizontal:NO];
+  spaced = [view cellOriginAtIndex:0];
+  [view setAllowsGaps:NO];
+  compact = [view cellOriginAtIndex:0];
+  NSCAssert(compact.y - spaced.y == [view cellSize].height + 2 && [a gapBefore],
+            @"Disabling gaps compacts vertical layout without losing saved gaps");
   [dock orderOut:nil];
   NSCAssert(![second isVisible], @"Hiding dock hides icons");
   [dock setContentView:nil];

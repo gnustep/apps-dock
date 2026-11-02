@@ -23,7 +23,8 @@ int main(void)
   NSDictionary *record = [NSDictionary dictionaryWithObjectsAndKeys:
     missing, @"Path", @"--test argument", @"Arguments",
     [NSNumber numberWithBool:NO], @"UseBehaviorDefaults",
-    [NSNumber numberWithBool:NO], @"WigglesOnLaunch", nil];
+    [NSNumber numberWithBool:NO], @"WigglesOnLaunch",
+    [NSNumber numberWithBool:YES], @"GapBefore", nil];
   NSMutableDictionary *domain = [NSMutableDictionary dictionaryWithObject:
     [NSArray arrayWithObjects:first, record, last, nil] forKey:@"DockApplications"];
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -31,6 +32,7 @@ int main(void)
   [defaults setVolatileDomain:domain forName:NSArgumentDomain];
   DockPreferences *preferences = [DockPreferences new];
   NSCAssert([preferences savedKeepsMissingApplications], @"Enabled by default");
+  NSCAssert(![preferences savedAllowsGaps], @"Gaps disabled by default");
   RunningApplicationScanner *scanner = [RunningApplicationScanner new];
   DockApplicationStore *store = [[DockApplicationStore alloc] initWithScanner:scanner];
   NSMutableArray *items = [NSMutableArray array];
@@ -41,6 +43,8 @@ int main(void)
   NSCAssert([[item launchArguments] isEqual:@"--test argument"] && ![item wigglesOnLaunch], @"Settings preserved");
   NSDictionary *saved = [store persistedApplicationRecordForItem:item];
   NSCAssert([[saved objectForKey:@"Path"] isEqual:missing] && [[saved objectForKey:@"Arguments"] isEqual:@"--test argument"], @"Missing entry serializes");
+  NSCAssert([item gapBefore] && [[saved objectForKey:@"GapBefore"] boolValue], @"Gap survives load and save");
+  NSCAssert(![[items objectAtIndex:0] gapBefore], @"Legacy records have no gap");
   [store loadPersistedApplicationsIntoItems:items];
   NSCAssert([items count] == 3, @"No duplicates on reload");
   [files createDirectoryAtPath:missing withIntermediateDirectories:YES attributes:nil error:NULL];

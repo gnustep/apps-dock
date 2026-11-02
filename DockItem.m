@@ -357,4 +357,7 @@
   return YES;
 }
 
+- (BOOL) gapBefore { return _gapBefore; }
+- (void) setGapBefore: (BOOL)gap { _gapBefore = gap; }
+
 @end

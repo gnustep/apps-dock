@@ -370,4 +370,17 @@ didChangeItemWigglesOnAttentionRequest:[_applicationWiggleOnAttentionRequestButt
     didChangeKeepsMissingApplications:[(NSButton *)sender state] == NSOnState];
 }
 
+- (void) allowsGapsChanged: (id)sender
+{
+  [_delegate settingsController:self didChangeAllowsGaps:[(NSButton *)sender state] == NSOnState];
+  [self updateControls];
+}
+
+- (void) gapBeforeChanged: (id)sender
+{
+  DockItem *item = [self selectedApplicationItem];
+  if (item) [_delegate settingsController:self didChangeGapBefore:[(NSButton *)sender state] == NSOnState forItem:item];
+  [self updateControls];
+}
+
 @end

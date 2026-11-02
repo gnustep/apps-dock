@@ -551,4 +551,24 @@ didChangeItemWigglesOnAttentionRequest: (BOOL)wiggles
   [self scanRunningApplications];
 }
 
+- (BOOL) settingsControllerAllowsGaps: (SettingsController *)controller
+{
+  return [_preferences savedAllowsGaps];
+}
+
+- (void) settingsController: (SettingsController *)controller didChangeAllowsGaps: (BOOL)allows
+{
+  [_preferences saveAllowsGaps:allows];
+  [self refreshDock];
+}
+
+- (void) settingsController: (SettingsController *)controller didChangeGapBefore: (BOOL)gap forItem: (DockItem *)item
+{
+  if (![_preferences savedAllowsGaps] || ![item isPinned] ||
+      [item kind] != DockItemApplication || ![[item path] length]) return;
+  [item setGapBefore:gap];
+  [self savePersistedApplications];
+  [self refreshDock];
+}
+
 @end

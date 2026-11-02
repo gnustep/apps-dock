@@ -40,6 +40,8 @@ enum
 - (void) saveDockCellSizeMode: (NSInteger)mode;
 - (DockRunningIndicatorMode) savedRunningIndicatorMode;
 - (void) saveRunningIndicatorMode: (DockRunningIndicatorMode)mode;
+- (BOOL) savedAllowsGaps;
+- (void) saveAllowsGaps: (BOOL)allows;
 - (BOOL) savedUseCellTileBackground;
 - (void) saveUseCellTileBackground: (BOOL)useCellTileBackground;
 - (BOOL) savedMagnifiesHoveredIcons;

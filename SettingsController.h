@@ -31,6 +31,9 @@
 - (DockRunningIndicatorMode) settingsControllerRunningIndicatorMode: (SettingsController *)controller;
 - (NSColor *) settingsControllerBackgroundColor: (SettingsController *)controller;
 - (CGFloat) settingsControllerWindowAlpha: (SettingsController *)controller;
+- (BOOL) settingsControllerAllowsGaps: (SettingsController *)controller;
+- (void) settingsController: (SettingsController *)controller didChangeAllowsGaps: (BOOL)allows;
+- (void) settingsController: (SettingsController *)controller didChangeGapBefore: (BOOL)gap forItem: (DockItem *)item;
 - (BOOL) settingsControllerUsesCellTileBackground: (SettingsController *)controller;
 - (BOOL) settingsControllerShowsDockBorder: (SettingsController *)controller;
 - (BOOL) settingsControllerMagnifiesHoveredIcons: (SettingsController *)controller;
@@ -142,6 +145,8 @@ didChangeItemWigglesOnAttentionRequest: (BOOL)wiggles
   NSSlider *_dockScaleSlider;
   NSTextField *_dockScaleValueLabel;
   NSButton *_useCellTileButton;
+  NSButton *_allowsGapsButton;
+  NSButton *_gapBeforeButton;
   NSButton *_showBorderButton;
   NSButton *_magnifyHoveredIconsButton;
   NSTextField *_hoverIconScaleLabel;

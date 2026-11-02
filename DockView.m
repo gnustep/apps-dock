@@ -473,4 +473,13 @@
 
 
 
+- (void) setAllowsGaps: (BOOL)allows
+{
+  if (_allowsGaps != allows)
+    {
+      _allowsGaps = allows;
+      [self setNeedsDisplay:YES];
+    }
+}
+
 @end

@@ -189,6 +189,8 @@
   NSImage *icon = [item icon];
   CGFloat angle = 0.0;
 
+  [self drawCellBackgroundInCell:cell];
+
   if ([item isMissing])
     {
       NSRect rect = [self iconRectInCell:cell size:size];
@@ -282,6 +284,7 @@
 {
   NSRect cell = [self topTileRect];
 
+  [self drawCellBackgroundInCell:cell];
   [self drawImage:_gnustepIcon inCell:cell size:50.0 * (_cellSize / DockCell)];
 }
 
@@ -357,6 +360,7 @@
   NSImage *standardRecyclerIcon = [self standardRecyclerIcon];
   NSImage *recyclerIcon = standardRecyclerIcon ? standardRecyclerIcon : _recyclerIcon;
 
+  [self drawCellBackgroundInCell:cell];
   if (![self drawImage:recyclerIcon
 		 inCell:cell
 		   size:46.0 * (_cellSize / DockCell)

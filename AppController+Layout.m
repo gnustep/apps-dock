@@ -25,6 +25,10 @@
 {
   NSRect screenFrame = [[NSScreen mainScreen] frame];
   NSUInteger cellCount = [_items count] + 2;
+  if ([_preferences savedAllowsGaps])
+    for (DockItem *item in _items)
+      if ([item isPinned] && [item gapBefore]) cellCount++;
+
   CGFloat pad = [self activeDockPad];
   CGFloat gap = [self activeDockGap];
   CGFloat length = pad * 2.0 + cellCount * [DockPreferences dockCellSize] * _dockScale + (cellCount - 1) * gap;

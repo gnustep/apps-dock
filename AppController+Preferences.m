@@ -110,6 +110,7 @@
 {
   if (_dockView)
     {
+      [_dockView setAllowsGaps:[_preferences savedAllowsGaps]];
       [_dockView setIconCellSize:[DockPreferences dockCellSize] * _dockScale
 			      gap:[self activeDockGap]
 			  padding:[self activeDockPad]];

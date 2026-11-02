@@ -565,6 +565,11 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
   NSMutableArray *state = [NSMutableArray array];
   NSNull *empty = [NSNull null];
   [state addObject:[NSNumber numberWithDouble:_cellSize]];
+  if (kind == 0 || kind == 3)
+    {
+      [state addObject:[NSNumber numberWithBool:_usesCellBackgroundTile]];
+      [state addObject:_cellBackgroundImage ? (id)_cellBackgroundImage : empty];
+    }
   if (kind == 0 && item)
     {
       NSUInteger index = [_items indexOfObjectIdenticalTo:item];

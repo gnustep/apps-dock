@@ -106,6 +106,9 @@
   [_tooltipDelaySlider setDoubleValue:[_delegate settingsControllerTooltipDelay:self]];
   [self updateTooltipDelayValueLabel];
 
+  [_allowsGapsButton setState:[_delegate settingsControllerAllowsGaps:self] ? NSOnState : NSOffState];
+  [_gapBeforeButton setEnabled:NO];
+  [_gapBeforeButton setState:NSOffState];
   [_useCellTileButton setState:
       ([_delegate settingsControllerUsesCellTileBackground:self] ?
        NSOnState : NSOffState)];
@@ -213,6 +216,9 @@
       BOOL canDelete =
 	[_delegate settingsController:self canDeleteItemAtIndex:selectedIndex];
 
+      [_gapBeforeButton setEnabled:hasPersistedApplicationSettings &&
+        [_delegate settingsControllerAllowsGaps:self]];
+      [_gapBeforeButton setState:[item gapBefore] ? NSOnState : NSOffState];
       [_applicationPathField setStringValue:
 	  ([item path] ? [item path] : @"")];
       [_applicationPathField setToolTip:

@@ -74,6 +74,7 @@ typedef enum
   CGFloat _hoverIconScale;
   NSTimeInterval _tooltipDelay;
   BOOL _usesCellBackgroundTile;
+  BOOL _allowsGaps;
   BOOL _showsBorder;
   BOOL _magnifiesHoveredIcons;
   DockRunningIndicatorMode _runningIndicatorMode;
@@ -121,6 +122,7 @@ typedef enum
 - (void) setSingleClickLaunchesApplications: (BOOL)singleClickLaunches;
 - (BOOL) singleClickLaunchesApplications;
 - (void) setUsesCellBackgroundTile: (BOOL)usesTile;
+- (void) setAllowsGaps: (BOOL)allows;
 - (BOOL) usesCellBackgroundTile;
 - (void) setHorizontal: (BOOL)horizontal;
 - (BOOL) isHorizontal;

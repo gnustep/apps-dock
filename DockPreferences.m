@@ -526,4 +526,15 @@ static NSString *DockScaleDefaultsKey = @"DockScale";
                                         forKey:@"DockKeepsMissingApplications"];
 }
 
+- (BOOL) savedAllowsGaps
+{
+  return [[NSUserDefaults standardUserDefaults] boolForKey:@"DockAllowsGaps"];
+}
+
+- (void) saveAllowsGaps: (BOOL)allows
+{
+  [[NSUserDefaults standardUserDefaults] setBool:allows forKey:@"DockAllowsGaps"];
+  [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 @end

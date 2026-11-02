@@ -67,6 +67,8 @@ SettingsClampedWindowAlpha(CGFloat alpha)
 - (void) backgroundColorChanged: (id)sender;
 - (void) transparencyChanged: (id)sender;
 - (void) showBorderChanged: (id)sender;
+- (void) allowsGapsChanged: (id)sender;
+- (void) gapBeforeChanged: (id)sender;
 - (void) useCellTileChanged: (id)sender;
 - (void) magnifyHoveredIconsChanged: (id)sender;
 - (void) tooltipDelayChanged: (id)sender;

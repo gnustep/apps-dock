@@ -170,13 +170,15 @@ static NSString *DockOpenAtLoginApplicationsDefaultsKey = @"DockOpenAtLoginAppli
   NSString *arguments = [item launchArguments];
   NSMutableDictionary *record;
 
-  if (![arguments length] && [item usesDockBehaviorDefaults])
+  if (![arguments length] && [item usesDockBehaviorDefaults] && ![item gapBefore])
     {
       return path;
     }
 
   record = [NSMutableDictionary dictionaryWithObject:path
 					      forKey:DockApplicationPathKey];
+  if ([item gapBefore])
+    [record setObject:[NSNumber numberWithBool:YES] forKey:@"GapBefore"];
   if ([arguments length])
     {
       [record setObject:arguments forKey:DockApplicationArgumentsKey];
@@ -248,6 +250,7 @@ static NSString *DockOpenAtLoginApplicationsDefaultsKey = @"DockOpenAtLoginAppli
       return;
     }
 
+  [item setGapBefore:[self boolValueFromRecord:record key:@"GapBefore" defaultValue:NO]];
   usesDefaults = [self boolValueFromRecord:record
 				       key:DockApplicationUseBehaviorDefaultsKey
 			      defaultValue:YES];

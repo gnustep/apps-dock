@@ -50,16 +50,21 @@
 - (NSPoint) cellOriginAtIndex: (NSUInteger)index
 {
   NSRect topTile = [self topTileRect];
+  NSUInteger slot = index;
+  if (_allowsGaps)
+    for (NSUInteger i = 0; i < [_items count] && i <= index; i++)
+      if ([[_items objectAtIndex:i] isPinned] && [[_items objectAtIndex:i] gapBefore]) slot++;
+
   if (_horizontal)
     {
-      return NSMakePoint(NSMaxX(topTile) + _dockGap + index * (_cellSize + _dockGap),
+      return NSMakePoint(NSMaxX(topTile) + _dockGap + slot * (_cellSize + _dockGap),
 			 NSMinY(topTile));
     }
   else
     {
       return NSMakePoint(_dockPad,
 			 NSMinY(topTile) - _dockGap - _cellSize
-			 - index * (_cellSize + _dockGap));
+			 - slot * (_cellSize + _dockGap));
     }
 }
 

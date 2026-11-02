@@ -64,6 +64,8 @@
   DESTROY(_magnifyHoveredIconsButton);
   DESTROY(_showBorderButton);
   DESTROY(_useCellTileButton);
+  DESTROY(_allowsGapsButton);
+  DESTROY(_gapBeforeButton);
   DESTROY(_notRunningDotsButton);
   DESTROY(_dockScaleValueLabel);
   DESTROY(_dockScaleSlider);

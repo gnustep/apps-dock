@@ -152,3 +152,12 @@ generate a repeating configure-event loop.
 Native event processing also continues during modal alerts and menu tracking,
 so window-manager restacks cannot leave icons covered while those loops run.
 The icon-window test checks recovery with a modal alert open.
+
+Gaps can be enabled with **Settings → Dock → Allow gaps (NeXT style)**
+(off by default). In **Applications**, select a pinned app and enable
+**Gap before app** to leave one empty tile-sized slot before it. Gap positions
+are saved with pinned apps; turning gaps off compacts the dock without erasing
+them. The option works in horizontal and vertical docks.
+
+**Appearance → Use common_Tile** draws a tile behind each icon while keeping
+the surrounding dock transparent. The tile itself retains its image opacity.

@@ -211,6 +211,12 @@
     [self valueLabelWithFrame:NSMakeRect(360, 70, 54, 20)];
   [dockView addSubview:_dockScaleValueLabel];
 
+  _allowsGapsButton =
+    [self buttonWithTitle:@"Allow gaps (NeXT style)"
+                    frame:NSMakeRect(18, 24, 300, 24)
+               buttonType:NSSwitchButton action:@selector(allowsGapsChanged:)];
+  [dockView addSubview:_allowsGapsButton];
+
   label = [self labelWithTitle:@"Color"
 			 frame:NSMakeRect(18, 264, 110, 20)];
   [appearanceView addSubview:label];
@@ -448,6 +454,13 @@
 		   action:@selector(moveApplicationDown:)];
   [_moveApplicationDownButton setBezelStyle:NSRoundedBezelStyle];
   [applicationsView addSubview:_moveApplicationDownButton];
+
+  _gapBeforeButton =
+    [self buttonWithTitle:@"Gap before app"
+                    frame:NSMakeRect(216, 104, 196, 24)
+               buttonType:NSSwitchButton action:@selector(gapBeforeChanged:)];
+  [_gapBeforeButton setToolTip:@"Leave an empty slot before this pinned app. Enable Allow gaps in Dock settings."];
+  [applicationsView addSubview:_gapBeforeButton];
 
   _deleteApplicationButton =
     [self buttonWithTitle:@"Delete"
