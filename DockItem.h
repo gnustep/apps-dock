@@ -99,5 +99,9 @@ typedef enum
 @end
 
 @interface DockItem (Icons)
+
++ (NSString *) x11IconCacheDirectory;
++ (NSString *) x11IconCacheFileNameForIdentifier: (NSString *)identifier;
 + (NSString *) applicationBundlePathForPath: (NSString *)path;
+
 @end

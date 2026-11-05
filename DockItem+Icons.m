@@ -21,6 +21,75 @@
 
 @implementation DockItem (Icons)
 
++ (NSString *) x11IconCacheDirectory
+{
+  NSArray *libraryPaths =
+    NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
+					NSUserDomainMask,
+					YES);
+  NSString *libraryPath = [libraryPaths count] ? [libraryPaths objectAtIndex:0] : nil;
+  NSString *cachePath;
+
+  if (![libraryPath length])
+    {
+      libraryPath = NSHomeDirectory();
+    }
+  if (![libraryPath length])
+    {
+      return nil;
+    }
+
+  cachePath = [[libraryPath stringByAppendingPathComponent:@"DockWM"]
+			   stringByAppendingPathComponent:@"X11Icons"];
+  if ([[NSFileManager defaultManager] createDirectoryAtPath:cachePath
+				withIntermediateDirectories:YES
+						 attributes:nil
+						      error:NULL])
+    {
+      return cachePath;
+    }
+
+  return nil;
+}
+
++ (NSString *) x11IconCacheFileNameForIdentifier: (NSString *)identifier
+{
+  NSMutableString *name = [NSMutableString string];
+  NSUInteger i;
+
+  if (![identifier length])
+    {
+      identifier = @"x11-window";
+    }
+
+  for (i = 0; i < [identifier length] && [name length] < 80; i++)
+    {
+      unichar c = [identifier characterAtIndex:i];
+
+      if ((c >= 'a' && c <= 'z') ||
+	  (c >= 'A' && c <= 'Z') ||
+	  (c >= '0' && c <= '9') ||
+	  c == '.' || c == '_' || c == '-')
+	{
+	  [name appendFormat:@"%C", c];
+	}
+      else
+	{
+	  [name appendString:@"_"];
+	}
+    }
+
+  if (![name length])
+    {
+      [name appendString:@"x11-window"];
+    }
+
+  return [NSString stringWithFormat:@"%@-%lx.tiff",
+		   name,
+		   (unsigned long)[identifier hash]];
+}
+
+
 + (BOOL) imageIsDrawable: (NSImage *)image
 {
   return image && ([[image representations] count] > 0 ||

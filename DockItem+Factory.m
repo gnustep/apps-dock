@@ -32,6 +32,20 @@
     {
       icon = [self iconForApplicationPath:bundlePath];
     }
+  /* X11 icons are cached by application path, including entries saved by
+   * older versions that persisted only the executable path. */
+  if (!bundlePath && [path length])
+    {
+      NSString *cachedPath = [[self x11IconCacheDirectory]
+        stringByAppendingPathComponent:
+          [self x11IconCacheFileNameForIdentifier:path]];
+
+      icon = [self imageAtPath:cachedPath];
+      if (icon)
+        {
+          iconPath = cachedPath;
+        }
+    }
   if (!icon && [[[path pathExtension] lowercaseString] isEqualToString:@"desktop"])
     {
       icon = [self iconForDesktopFile:path];

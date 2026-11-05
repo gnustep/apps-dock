@@ -47,6 +47,13 @@ sh Tests/run-missing-applications.sh
 
 These checks require `clang`, GNUstep, and `xvfb-run`.
 
+X11 application icons are cached when received from their windows and reloaded
+by application path when the dock restarts, including older pinned entries.
+GNUstep applications continue to use their bundle icons. If an X11 cache file
+is missing or unreadable, the dock uses its normal icon lookup until the app
+provides a new icon. Run `sh Tests/run-x11-icon-persistence.sh` to check this
+behavior under Xvfb.
+
 Application exits are checked every half second, independently of the slower
 application discovery and missing-file scans. Closing a window keeps its app
 running in the dock if the process is still alive. Run the exit regression
