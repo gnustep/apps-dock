@@ -155,10 +155,26 @@ didChangeWigglesOnAttentionRequest:[(NSButton *)sender state] == NSOnState];
 didChangeSingleClickLaunchesApplications:[(NSButton *)sender state] == NSOnState];
 }
 
+- (void) applicationIconManagerChanged: (id)sender
+{
+  DockItem *item = [self selectedApplicationItem];
+  NSInteger selection = [_applicationIconManagerPopup indexOfSelectedItem];
+  NSNumber *value = selection == 0 ? nil
+    : [NSNumber numberWithBool:selection == 1];
+
+  if (item != nil)
+    {
+      [_delegate settingsController:self
+        didChangeIconManagerOverride:value forItem:item];
+      [self updateControls];
+    }
+}
+
 - (void) useIconManagerChanged: (id)sender
 {
   [_delegate settingsController:self
        didChangeUsesIconManager:[(NSButton *)sender state] == NSOnState];
+  [self updateControls];
 }
 
 - (void) hideMiniwindowsChanged: (id)sender

@@ -65,6 +65,9 @@ enum
 - (void) applyIconManagerPreference;
 - (BOOL) savedUsesIconManager;
 - (void) saveUsesIconManager: (BOOL)useIconManager;
+/* nil inherits the global preference; NSNumber provides an app override. */
+- (NSNumber *) iconManagerOverrideForDomain: (NSString *)domain;
+- (void) setIconManagerOverride: (NSNumber *)value forDomain: (NSString *)domain;
 - (BOOL) savedHidesMiniwindows;
 - (void) saveHidesMiniwindows: (BOOL)hidesMiniwindows;
 - (CGFloat) savedDockScale;

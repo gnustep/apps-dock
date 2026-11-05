@@ -430,25 +430,6 @@ static NSString *DockScaleDefaultsKey = @"DockScale";
 
 - (void) applyIconManagerPreference
 {
-  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-  NSEnumerator *names = [[defaults persistentDomainNames] objectEnumerator];
-  NSString *name;
-
-  /* Retire application overrides so every application inherits the global choice. */
-  while ((name = [names nextObject]))
-    {
-      NSDictionary *existing = [defaults persistentDomainForName:name];
-
-      if (![name isEqual:NSGlobalDomain] &&
-          [existing objectForKey:@"GSUseIconManager"] != nil)
-        {
-          NSMutableDictionary *domain =
-            [NSMutableDictionary dictionaryWithDictionary:existing];
-
-          [domain removeObjectForKey:@"GSUseIconManager"];
-          [defaults setPersistentDomain:domain forName:name];
-        }
-    }
   [self saveUsesIconManager:[self savedUsesIconManager]];
 }
 
@@ -472,6 +453,43 @@ static NSString *DockScaleDefaultsKey = @"DockScale";
   [domain setObject:[NSNumber numberWithBool:useIconManager]
             forKey:@"GSUseIconManager"];
   [defaults setPersistentDomain:domain forName:NSGlobalDomain];
+  [defaults synchronize];
+}
+
+- (NSNumber *) iconManagerOverrideForDomain: (NSString *)domain
+{
+  if (![domain length])
+    {
+      return nil;
+    }
+  return [[[NSUserDefaults standardUserDefaults] persistentDomainForName:domain]
+    objectForKey:@"GSUseIconManager"];
+}
+
+- (void) setIconManagerOverride: (NSNumber *)value forDomain: (NSString *)domain
+{
+  NSUserDefaults *defaults;
+  NSDictionary *existing;
+  NSMutableDictionary *values;
+
+  if (![domain length] || [domain isEqual:NSGlobalDomain])
+    {
+      return;
+    }
+  defaults = [NSUserDefaults standardUserDefaults];
+  [defaults synchronize];
+  existing = [defaults persistentDomainForName:domain];
+  values = existing ? [NSMutableDictionary dictionaryWithDictionary:existing]
+    : [NSMutableDictionary dictionary];
+  if (value != nil)
+    {
+      [values setObject:value forKey:@"GSUseIconManager"];
+    }
+  else
+    {
+      [values removeObjectForKey:@"GSUseIconManager"];
+    }
+  [defaults setPersistentDomain:values forName:domain];
   [defaults synchronize];
 }
 

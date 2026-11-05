@@ -167,6 +167,33 @@
   return _singleClickLaunchesApplications;
 }
 
+- (NSString *) iconManagerDomainForItem: (DockItem *)item
+{
+  NSString *path;
+
+  [self resolvePathForX11WindowItem:item];
+  path = [item path];
+  if ([[[path pathExtension] lowercaseString] isEqual:@"desktop"])
+    {
+      path = [self executablePathForDesktopFile:path];
+    }
+  return [self defaultsDomainForApplicationPath:path];
+}
+
+- (NSNumber *) settingsController: (SettingsController *)controller
+      iconManagerOverrideForItem: (DockItem *)item
+{
+  return [_preferences iconManagerOverrideForDomain:
+    [self iconManagerDomainForItem:item]];
+}
+
+- (void) settingsController: (SettingsController *)controller
+  didChangeIconManagerOverride: (NSNumber *)value forItem: (DockItem *)item
+{
+  [_preferences setIconManagerOverride:value
+    forDomain:[self iconManagerDomainForItem:item]];
+}
+
 - (BOOL) settingsControllerUsesIconManager: (SettingsController *)controller
 {
   return [_preferences savedUsesIconManager];

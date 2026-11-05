@@ -32,6 +32,11 @@
   if (processIdentifier > 0)
     {
       processIdentifierNumber = [NSNumber numberWithInt:processIdentifier];
+      if (![self iconManagerEnabledForPath:
+            [self executablePathForProcessIdentifier:processIdentifierNumber]])
+        {
+          return;
+        }
       [self rememberApplicationIcon:icon
 			  badgeLabel:nil
 		   processIdentifier:processIdentifierNumber];
@@ -90,6 +95,11 @@
   if (processIdentifier > 0)
     {
       processIdentifierNumber = [NSNumber numberWithInt:processIdentifier];
+      if (![self iconManagerEnabledForPath:
+            [self executablePathForProcessIdentifier:processIdentifierNumber]])
+        {
+          return;
+        }
       [self rememberApplicationIcon:icon
 			  badgeLabel:badgeLabel
 		   processIdentifier:processIdentifierNumber];

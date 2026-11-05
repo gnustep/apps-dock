@@ -21,6 +21,24 @@
 
 @implementation AppController (Icons)
 
+- (BOOL) iconManagerEnabledForPath: (NSString *)path
+{
+  NSNumber *override;
+  DockPreferences *preferences = _preferences;
+
+  if (preferences == nil)
+    {
+      preferences = AUTORELEASE([[DockPreferences alloc] init]);
+    }
+  if ([[[path pathExtension] lowercaseString] isEqual:@"desktop"])
+    {
+      path = [self executablePathForDesktopFile:path];
+    }
+  override = [preferences iconManagerOverrideForDomain:
+    [self defaultsDomainForApplicationPath:path]];
+  return override != nil ? [override boolValue] : [preferences savedUsesIconManager];
+}
+
 - (BOOL) item: (DockItem *)item iconMatchesImage: (NSImage *)image
 {
   return [_applicationIconManager item:item iconMatchesImage:image];
@@ -70,11 +88,13 @@
 - (BOOL) applyApplicationIconUpdate: (NSDictionary *)update
 			     toItem: (DockItem *)item
 {
+  if (![self iconManagerEnabledForPath:[item path]]) return NO;
   return [_applicationIconManager applyApplicationIconUpdate:update toItem:item];
 }
 
 - (BOOL) applyStoredApplicationIconUpdateForItem: (DockItem *)item
 {
+  if (![self iconManagerEnabledForPath:[item path]]) return NO;
   return [_applicationIconManager applyStoredApplicationIconUpdateForItem:item];
 }
 

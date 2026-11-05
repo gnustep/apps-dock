@@ -102,13 +102,18 @@ At startup, DockWM writes `GSUseIconManager` to the GNUstep global defaults
 domain. It defaults to enabled. Turn off **Settings → Behavior → Use icon
 manager for all applications** to disable it; the global choice is saved
 immediately and retained across restarts. Applications read this setting when
-starting, so restart running applications to pick up a change. DockWM no longer
-writes this setting into individual application domains. At startup it removes
-saved per-application `GSUseIconManager` overrides so applications inherit the
-global choice, preserving their other preferences.
+starting, so restart running applications to pick up a change. Per-app choices are available in **Settings → Applications → Icon manager**:
+**Use global setting** (the default), **On**, or **Off**. An explicit app choice
+takes priority over the global switch and survives DockWM restarts. Choose
+**Use global setting** to remove an override. Other app preferences are preserved.
+DockWM also rejects incoming application icon-manager updates when disabled,
+including direct messages from apps that bypass GNUstep's preference check.
+This does not pause an embedded X11 dockapp's own drawing or disable process
+tracking. Restart applications after changing the setting to update their own
+icon-manager connections.
 
-Run `sh Tests/run-icon-manager-preferences.sh` to check the default, persistence,
-and migration of per-application overrides using an isolated defaults database.
+Run `sh Tests/run-icon-manager-preferences.sh` to check defaults, persistence,
+and per-application overrides using an isolated defaults database.
 
 Each application's menu includes **Keep In Dock**, enabled by default. Turning
 it off immediately removes the app from the dock, even while it is running,

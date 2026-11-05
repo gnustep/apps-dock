@@ -216,6 +216,12 @@
       BOOL canDelete =
 	[_delegate settingsController:self canDeleteItemAtIndex:selectedIndex];
 
+      NSNumber *iconManagerOverride = [_delegate settingsController:self
+        iconManagerOverrideForItem:item];
+
+      [_applicationIconManagerPopup setEnabled:hasOpenAtLoginPath];
+      [_applicationIconManagerPopup selectItemAtIndex:
+        iconManagerOverride == nil ? 0 : ([iconManagerOverride boolValue] ? 1 : 2)];
       [_gapBeforeButton setEnabled:hasPersistedApplicationSettings &&
         [_delegate settingsControllerAllowsGaps:self]];
       [_gapBeforeButton setState:[item gapBefore] ? NSOnState : NSOffState];
@@ -255,6 +261,8 @@
     }
   else
     {
+      [_applicationIconManagerPopup setEnabled:NO];
+      [_applicationIconManagerPopup selectItemAtIndex:0];
       [_applicationPathField setStringValue:@""];
       [_applicationPathField setToolTip:@""];
       [_applicationArgumentsField setStringValue:@""];

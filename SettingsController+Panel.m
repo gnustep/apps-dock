@@ -87,7 +87,7 @@
     }
 
   _panel = [[NSPanel alloc]
-	     initWithContentRect:NSMakeRect(0, 0, 460, 452)
+	     initWithContentRect:NSMakeRect(0, 0, 460, 516)
 		       styleMask:NSTitledWindowMask | NSClosableWindowMask
 			 backing:NSBackingStoreBuffered
 			   defer:NO];
@@ -98,32 +98,32 @@
   contentView = [_panel contentView];
 
   tabView = AUTORELEASE([[NSTabView alloc]
-			  initWithFrame:NSMakeRect(12, 56, 436, 384)]);
+			  initWithFrame:NSMakeRect(12, 56, 436, 448)]);
   [contentView addSubview:tabView];
 
   dockView = AUTORELEASE([[NSView alloc]
-			   initWithFrame:NSMakeRect(0, 0, 420, 340)]);
+			   initWithFrame:NSMakeRect(0, 0, 420, 404)]);
   tabItem = AUTORELEASE([[NSTabViewItem alloc] initWithIdentifier:@"Dock"]);
   [tabItem setLabel:@"Dock"];
   [tabItem setView:dockView];
   [tabView addTabViewItem:tabItem];
 
   appearanceView = AUTORELEASE([[NSView alloc]
-				 initWithFrame:NSMakeRect(0, 0, 420, 340)]);
+				 initWithFrame:NSMakeRect(0, 0, 420, 404)]);
   tabItem = AUTORELEASE([[NSTabViewItem alloc] initWithIdentifier:@"Appearance"]);
   [tabItem setLabel:@"Appearance"];
   [tabItem setView:appearanceView];
   [tabView addTabViewItem:tabItem];
 
   behaviorView = AUTORELEASE([[NSView alloc]
-			       initWithFrame:NSMakeRect(0, 0, 420, 340)]);
+			       initWithFrame:NSMakeRect(0, 0, 420, 404)]);
   tabItem = AUTORELEASE([[NSTabViewItem alloc] initWithIdentifier:@"Behavior"]);
   [tabItem setLabel:@"Behavior"];
   [tabItem setView:behaviorView];
   [tabView addTabViewItem:tabItem];
 
   applicationsView = AUTORELEASE([[NSView alloc]
-				   initWithFrame:NSMakeRect(0, 0, 420, 340)]);
+				   initWithFrame:NSMakeRect(0, 0, 420, 404)]);
   tabItem = AUTORELEASE([[NSTabViewItem alloc] initWithIdentifier:@"Applications"]);
   [tabItem setLabel:@"Applications"];
   [tabItem setView:applicationsView];
@@ -356,6 +356,8 @@
                     frame:NSMakeRect(18, 22, 390, 24)
                buttonType:NSSwitchButton
                    action:@selector(useIconManagerChanged:)];
+  [_useIconManagerButton setToolTip:
+    @"Global default; application overrides take priority. Restart applications after changing this setting."];
   [behaviorView addSubview:_useIconManagerButton];
 
   label = [self labelWithTitle:@"App"
@@ -477,6 +479,28 @@
 		   action:@selector(emptyRecycler:)];
   [_emptyRecyclerButton setBezelStyle:NSRoundedBezelStyle];
   [applicationsView addSubview:_emptyRecyclerButton];
+
+  /* Leave room below the existing application controls for icon management. */
+  for (i = 0; i < [[applicationsView subviews] count]; i++)
+    {
+      NSView *view = [[applicationsView subviews] objectAtIndex:i];
+      NSPoint origin = [view frame].origin;
+      origin.y += 64;
+      [view setFrameOrigin:origin];
+    }
+  label = [self labelWithTitle:@"Icon manager"
+                       frame:NSMakeRect(18, 38, 110, 20)];
+  [applicationsView addSubview:label];
+  _applicationIconManagerPopup = [[NSPopUpButton alloc]
+    initWithFrame:NSMakeRect(132, 34, 280, 26) pullsDown:NO];
+  [_applicationIconManagerPopup addItemsWithTitles:
+    [NSArray arrayWithObjects:@"Use global setting", @"On", @"Off", nil]];
+  [_applicationIconManagerPopup setTarget:self];
+  [_applicationIconManagerPopup setAction:@selector(applicationIconManagerChanged:)];
+  [applicationsView addSubview:_applicationIconManagerPopup];
+  label = [self labelWithTitle:@"Restart the application to apply icon manager changes."
+                       frame:NSMakeRect(18, 6, 394, 20)];
+  [applicationsView addSubview:label];
 
   closeButton = [self buttonWithTitle:@"Close"
 				frame:NSMakeRect(360, 16, 72, 28)

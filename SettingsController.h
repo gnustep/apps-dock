@@ -50,6 +50,10 @@
 - (BOOL) settingsControllerKeepsMissingApplications: (SettingsController *)controller;
 - (void) settingsController: (SettingsController *)controller
  didChangeKeepsMissingApplications: (BOOL)keep;
+- (NSNumber *) settingsController: (SettingsController *)controller
+      iconManagerOverrideForItem: (DockItem *)item;
+- (void) settingsController: (SettingsController *)controller
+  didChangeIconManagerOverride: (NSNumber *)value forItem: (DockItem *)item;
 - (BOOL) settingsControllerUsesIconManager: (SettingsController *)controller;
 - (void) settingsController: (SettingsController *)controller
   didChangeUsesIconManager: (BOOL)useIconManager;
@@ -160,6 +164,7 @@ didChangeItemWigglesOnAttentionRequest: (BOOL)wiggles
   NSButton *_playSoundOnRemoveButton;
   NSButton *_singleClickLaunchButton;
   NSButton *_useIconManagerButton;
+  NSPopUpButton *_applicationIconManagerPopup;
   NSButton *_hideMiniwindowsButton;
   NSButton *_keepMissingApplicationsButton;
   NSButton *_emptyRecyclerButton;
