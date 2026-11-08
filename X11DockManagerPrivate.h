@@ -127,6 +127,10 @@
 - (void) dockWindow: (unsigned long)xWindow atIndex: (NSUInteger)index;
 - (void) moveDockedWindow: (unsigned long)xWindow toIndex: (NSUInteger)index;
 - (void) activateWindow: (unsigned long)xWindow;
+- (void) collectMinimizedWindows: (NSMutableArray *)windows
+             processIdentifiers: (NSArray *)processIdentifiers
+                         window: (Window)target
+                    underWindow: (Window)parent;
 - (void) deiconifyWindow: (Window)window;
 - (NSUInteger) activateIconicWindowsForProcessIdentifiers: (NSArray *)processIdentifiers
 					      underWindow: (Window)parentWindow;

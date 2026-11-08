@@ -58,6 +58,79 @@
 }
 
 
+- (void) collectMinimizedWindows: (NSMutableArray *)windows
+             processIdentifiers: (NSArray *)processIdentifiers
+                         window: (Window)target
+                    underWindow: (Window)parent
+{
+  Display *display = (Display *)_display;
+  Window root, ancestor, *children = NULL;
+  unsigned int count = 0, i;
+
+  if (!XQueryTree(display, parent, &root, &ancestor, &children, &count))
+    {
+      return;
+    }
+  for (i = 0; i < count; i++)
+    {
+      Window window = children[i];
+      XWindowAttributes attr;
+      long state = NormalState;
+      int pid;
+
+      if ([self windowIsRegisteredIconWindow:window] ||
+          [self windowIsGNUstepIconOrMiniWindow:window]) continue;
+      [self clearX11Error];
+      if (!XGetWindowAttributes(display, window, &attr) ||
+          [self x11ErrorOccurred]) continue;
+      /* Window-manager frames may be override-redirect. Inspect their children,
+       * but never offer the frame itself as a restore target. */
+      pid = [self processIdentifierForWindow:window];
+      if (!attr.override_redirect &&
+          (window == target || (pid > 0 && [processIdentifiers
+            containsObject:[NSNumber numberWithInt:pid]])) &&
+          [self wmStateForWindow:window state:&state] && state == IconicState)
+        {
+          NSString *title = [self titleForWindow:window];
+          if (![title length]) title = @"Untitled Window";
+          [windows addObject:[NSDictionary dictionaryWithObjectsAndKeys:
+            [NSNumber numberWithUnsignedLong:window], @"window", title, @"title", nil]];
+        }
+      [self collectMinimizedWindows:windows processIdentifiers:processIdentifiers
+                             window:target underWindow:window];
+    }
+  if (children) XFree(children);
+}
+
+
+- (NSArray *) minimizedWindowsForProcessIdentifiers: (NSArray *)processIdentifiers
+                                            window: (unsigned long)xWindow
+{
+  NSMutableArray *windows = [NSMutableArray array];
+
+  if (_display && ([processIdentifiers count] || xWindow))
+    {
+      [self collectMinimizedWindows:windows processIdentifiers:processIdentifiers
+                             window:(Window)xWindow
+                        underWindow:DefaultRootWindow((Display *)_display)];
+    }
+  return windows;
+}
+
+
+- (void) restoreWindow: (unsigned long)xWindow
+{
+  long state = NormalState;
+
+  /* Recheck: a window may have closed or been restored while the menu was open. */
+  if (_display && [self wmStateForWindow:(Window)xWindow state:&state] &&
+      state == IconicState)
+    {
+      [self activateWindow:xWindow];
+    }
+}
+
+
 - (void) deiconifyWindow: (Window)window
 {
   Display *display = (Display *)_display;
@@ -134,14 +207,9 @@
 	  continue;
 	}
 
-      if (attr.override_redirect)
-	{
-	  continue;
-	}
-
       hasState = [self wmStateForWindow:window state:&state];
       processIdentifier = [self processIdentifierForWindow:window];
-      if (hasState && state == IconicState &&
+      if (!attr.override_redirect && hasState && state == IconicState &&
 	  processIdentifier > 0 &&
 	  [processIdentifiers containsObject:
 		     [NSNumber numberWithInt:processIdentifier]])
@@ -205,22 +273,12 @@
 	  continue;
 	}
 
-      if (attr.override_redirect)
-	{
-	  continue;
-	}
-
       hasState = [self wmStateForWindow:window state:&state];
-      if ((hasState && state == WithdrawnState &&
-	   attr.map_state != IsViewable) ||
-	  (attr.map_state != IsViewable &&
-	   (!hasState || state != IconicState)))
-	{
-	  continue;
-	}
-
       processIdentifier = [self processIdentifierForWindow:window];
-      if (processIdentifier > 0 &&
+      /* Only managed client windows qualify; still traverse hidden frames. */
+      if (!attr.override_redirect && hasState &&
+          (state == NormalState || state == IconicState) &&
+          processIdentifier > 0 &&
 	  [processIdentifiers containsObject:
 		     [NSNumber numberWithInt:processIdentifier]])
 	{

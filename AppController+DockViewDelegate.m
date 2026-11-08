@@ -320,6 +320,77 @@
                    inFileViewerRootedAtPath:directory];
 }
 
+- (BOOL) dockView: (id)dockView canRestoreItem: (DockItem *)item
+{
+  if ([item kind] == DockItemApplication)
+    {
+      return [item state] != DockItemNotRunning ||
+        [[self runningProcessIdentifiersForApplicationItem:item] count] > 0;
+    }
+  return [item xWindow] && [_x11 windowExists:[item xWindow]];
+}
+
+
+- (NSArray *) dockView: (id)dockView minimizedWindowsForItem: (DockItem *)item
+{
+  NSArray *processIds = nil;
+
+  if ([item kind] == DockItemApplication)
+    {
+      processIds = [self runningProcessIdentifiersForApplicationItem:item];
+    }
+  return [_x11 minimizedWindowsForProcessIdentifiers:processIds window:[item xWindow]];
+}
+
+
+- (void) dockView: (id)dockView restoreWindows: (NSArray *)windows
+          forItem: (DockItem *)item
+{
+  NSArray *current;
+  NSUInteger i;
+
+  /* An empty selection means restore the application, without requiring a
+   * miniwindow or a particular WM_STATE value to exist. */
+  if (![windows count])
+    {
+      if ([item kind] == DockItemApplication)
+        {
+          NSArray *processIds = [self runningProcessIdentifiersForApplicationItem:item];
+          BOOL activated = NO;
+          NSString *bundle = [DockItem applicationBundlePathForPath:[item path]];
+
+          /* GNUstep's NSRunningApplication is a stub. NSWorkspace contacts
+           * the running application and asks it to activate/unhide itself. */
+          if ([bundle length])
+            activated = [[NSWorkspace sharedWorkspace] launchApplication:bundle];
+          if ([_x11 activateApplicationWithProcessIdentifiers:processIds])
+            activated = YES;
+          if (!activated && [self dockView:dockView canRestoreItem:item])
+            [self launchApplicationItem:item useIconManager:YES];
+        }
+      else if ([item xWindow])
+        {
+          [_x11 activateWindow:[item xWindow]];
+        }
+      [_x11 drainTransientIconEvents];
+      [self refreshDock];
+      return;
+    }
+  current = [self dockView:dockView minimizedWindowsForItem:item];
+
+  for (i = 0; i < [current count]; i++)
+    {
+      NSNumber *window = [[current objectAtIndex:i] objectForKey:@"window"];
+      if ([windows containsObject:window])
+        {
+          [_x11 restoreWindow:[window unsignedLongValue]];
+        }
+    }
+  [_x11 drainTransientIconEvents];
+  [self refreshDock];
+}
+
+
 - (void) dockView: (id)dockView didQuitItem: (DockItem *)item
 {
   NSUInteger index;

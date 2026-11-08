@@ -156,6 +156,7 @@ DockViewCalibratedBackgroundColor(NSColor *color)
 - (void) toggleOpenAtLogin: (id)sender;
 - (void) showItemInFileViewer: (id)sender;
 - (void) showItemSettings: (id)sender;
+- (void) restoreItem: (id)sender;
 - (void) quitItem: (id)sender;
 - (void) emptyRecycler: (id)sender;
 - (void) scheduleTooltipForHoverIndex: (NSInteger)index;

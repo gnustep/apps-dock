@@ -34,6 +34,15 @@
 @interface AppController (X11Delegate) <X11DockManagerDelegate>
 @end
 
+@interface AppController (Restore)
+
+- (BOOL) dockView: (id)dockView canRestoreItem: (DockItem *)item;
+- (NSArray *) dockView: (id)dockView minimizedWindowsForItem: (DockItem *)item;
+- (void) dockView: (id)dockView restoreWindows: (NSArray *)windows
+          forItem: (DockItem *)item;
+
+@end
+
 @interface AppController (Private)
 - (DockPlacement) savedDockPlacement;
 - (NSColor *) savedBackgroundColor;

@@ -132,6 +132,22 @@ application back onto the dock to enable it again. This is separate from
 Run `sh Tests/run-keep-in-dock.sh` to check the menu, saved visibility, X11
 rediscovery, and restoring an app by dropping it back into the dock.
 
+Each running application's context menu includes **Restore**. It activates the
+application even when no minimized-window list is available. GNUstep apps are
+contacted through NSWorkspace; X11 clients are raised through the window manager.
+If a running external app has no managed windows, its launch command is used to
+request a window. When minimized windows can be identified, a single window is
+restored directly; for several windows, the submenu lists titles and **Restore All**.
+Miniwindow suppression remains in effect throughout restoration.
+GNUstep application entries find windows by their running process identifiers;
+individual X11 entries restore their associated window. GNUstep miniwindow icons
+and windows that are merely unmapped are excluded.
+
+Run `sh Tests/run-restore-menu.sh` to check menu actions and window restoration
+on an isolated X display. Run `sh Tests/run-chrome-restore.sh` to check a real
+Chrome window under Window Maker; it requires `google-chrome`, `wmaker`,
+`wmctrl`, `xdotool`, and Xvfb and uses a temporary Chrome profile.
+
 ### Icon windows and bounce animation
 
 Application icons, the GNUstep tile, the Recycler, and application state dots use

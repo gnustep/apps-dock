@@ -50,6 +50,10 @@ typedef enum
 - (void) dockView: (id)dockView didShowItemInFileViewer: (DockItem *)item;
 - (BOOL) dockView: (id)dockView canShowSettingsForItem: (DockItem *)item;
 - (void) dockView: (id)dockView didShowSettingsForItem: (DockItem *)item;
+- (BOOL) dockView: (id)dockView canRestoreItem: (DockItem *)item;
+- (NSArray *) dockView: (id)dockView minimizedWindowsForItem: (DockItem *)item;
+- (void) dockView: (id)dockView restoreWindows: (NSArray *)windows
+          forItem: (DockItem *)item;
 - (void) dockView: (id)dockView didQuitItem: (DockItem *)item;
 - (void) dockViewDidEmptyRecycler: (id)dockView;
 @end

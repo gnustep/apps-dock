@@ -87,6 +87,44 @@
   [menuItem setEnabled:hasPath];
   [menu addItem:menuItem];
 
+  {
+    NSArray *windows = nil;
+    NSMutableArray *identifiers = [NSMutableArray array];
+    NSUInteger i;
+    NSMenu *restoreMenu = AUTORELEASE([[NSMenu alloc] initWithTitle:@"Restore"]);
+
+    [restoreMenu setAutoenablesItems:NO];
+    if ([_delegate respondsToSelector:@selector(dockView:minimizedWindowsForItem:)])
+      windows = [_delegate dockView:self minimizedWindowsForItem:item];
+    for (i = 0; i < [windows count]; i++)
+      {
+        NSDictionary *window = [windows objectAtIndex:i];
+        NSNumber *identifier = [window objectForKey:@"window"];
+        [identifiers addObject:identifier];
+        menuItem = [self menuItemWithTitle:[window objectForKey:@"title"]
+                                  action:@selector(restoreItem:) item:item];
+        [menuItem setRepresentedObject:[NSDictionary dictionaryWithObjectsAndKeys:
+          item, @"item", [NSArray arrayWithObject:identifier], @"windows", nil]];
+        [restoreMenu addItem:menuItem];
+      }
+    menuItem = [self menuItemWithTitle:@"Restore" action:@selector(restoreItem:) item:item];
+    [menuItem setRepresentedObject:[NSDictionary dictionaryWithObjectsAndKeys:
+      item, @"item", identifiers, @"windows", nil]];
+    [menuItem setEnabled:([identifiers count] > 0 ||
+      ([_delegate respondsToSelector:@selector(dockView:canRestoreItem:)] &&
+       [_delegate dockView:self canRestoreItem:item]))];
+    if ([identifiers count] > 1)
+      {
+        NSMenuItem *restoreAll = [self menuItemWithTitle:@"Restore All"
+                                            action:@selector(restoreItem:) item:item];
+        [restoreAll setRepresentedObject:[menuItem representedObject]];
+        [restoreMenu addItem:[NSMenuItem separatorItem]];
+        [restoreMenu addItem:restoreAll];
+        [menuItem setSubmenu:restoreMenu];
+      }
+    [menu addItem:menuItem];
+  }
+
   menuItem = [self menuItemWithTitle:@"Quit"
                               action:@selector(quitItem:)
                                 item:item];
@@ -152,6 +190,31 @@
 		 @selector(dockView:didShowSettingsForItem:)])
     {
       [_delegate dockView:self didShowSettingsForItem:item];
+    }
+}
+
+
+- (BOOL) validateMenuItem: (id<NSMenuItem>)menuItem
+{
+  if ([menuItem action] == @selector(restoreItem:))
+    {
+      NSDictionary *selection = [menuItem representedObject];
+      return [[selection objectForKey:@"windows"] count] > 0 ||
+        ([_delegate respondsToSelector:@selector(dockView:canRestoreItem:)] &&
+         [_delegate dockView:self canRestoreItem:[selection objectForKey:@"item"]]);
+    }
+  return [menuItem isEnabled];
+}
+
+
+- (void) restoreItem: (id)sender
+{
+  NSDictionary *selection = [sender representedObject];
+
+  if ([_delegate respondsToSelector:@selector(dockView:restoreWindows:forItem:)])
+    {
+      [_delegate dockView:self restoreWindows:[selection objectForKey:@"windows"]
+                 forItem:[selection objectForKey:@"item"]];
     }
 }
 
