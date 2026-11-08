@@ -597,6 +597,8 @@ static NSWindow *NewIconWindow(DockView *dock, DockItem *item, NSInteger kind)
       NSString *title = [self tooltipTitleForHoverIndex:_tooltipItemIndex];
       [state addObject:title ? (id)title : empty];
       [state addObject:[NSValue valueWithSize:[_tooltipWindow frame].size]];
+      [state addObject:[NSNumber numberWithInteger:[self tooltipArrowEdge]]];
+      [state addObject:[NSValue valueWithPoint:[self tooltipArrowTip]]];
     }
   else if (kind == 2)
     {

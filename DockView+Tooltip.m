@@ -111,6 +111,9 @@
   NSRect frame = NSMakeRect(0.0, 0.0,
     MIN(ceil(textSize.width) + 14.0, NSWidth(screenFrame)),
     ceil(textSize.height) + 8.0);
+  /* Reserve a transparent strip for the pointer on the icon-facing edge. */
+  if (_horizontal) frame.size.height += 6.0;
+  else frame.size.width = MIN(NSWidth(frame) + 6.0, NSWidth(screenFrame));
   cell.origin = [[self window] convertBaseToScreen:
     [self convertPoint:cell.origin toView:nil]];
 
@@ -135,13 +138,68 @@
 }
 
 
+- (NSRectEdge) tooltipArrowEdge
+{
+  NSScreen *screen = [[self window] screen];
+  if (!screen) screen = [NSScreen mainScreen];
+  if (_horizontal)
+    return NSMidY([[self window] frame]) > NSMidY([screen frame])
+      ? NSMaxYEdge : NSMinYEdge;
+  return NSMidX([[self window] frame]) > NSMidX([screen frame])
+    ? NSMaxXEdge : NSMinXEdge;
+}
+
+
+- (NSPoint) tooltipArrowTip
+{
+  NSRect frame = [self tooltipWindowFrame];
+  NSRect cell = [self cellRectForHoverIndex:_tooltipItemIndex];
+  NSPoint center = [[self window] convertBaseToScreen:
+    [self convertPoint:NSMakePoint(NSMidX(cell), NSMidY(cell)) toView:nil]];
+  NSRectEdge edge = [self tooltipArrowEdge];
+
+  /* Keep the pointer aligned with the icon when the label hits a screen edge. */
+  if (edge == NSMinYEdge || edge == NSMaxYEdge)
+    return NSMakePoint(MAX(10.0, MIN(center.x - NSMinX(frame), NSWidth(frame) - 10.0)),
+                       edge == NSMinYEdge ? 0.0 : NSHeight(frame));
+  return NSMakePoint(edge == NSMinXEdge ? 0.0 : NSWidth(frame),
+    MAX(10.0, MIN(center.y - NSMinY(frame), NSHeight(frame) - 10.0)));
+}
+
+
 - (void) drawTooltip
 {
   NSString *title = [self tooltipTitleForHoverIndex:_tooltipItemIndex];
-  if (![title length]) return;
   NSRect rect = [[_tooltipWindow contentView] bounds];
+  NSRectEdge edge = [self tooltipArrowEdge];
+  NSPoint tip = [self tooltipArrowTip];
+  NSPoint a = tip, b = tip;
+  NSBezierPath *arrow = [NSBezierPath bezierPath];
+
+  if (![title length]) return;
+  if (edge == NSMinYEdge || edge == NSMaxYEdge)
+    {
+      rect.size.height -= 6.0;
+      if (edge == NSMinYEdge) rect.origin.y += 6.0;
+      a.x -= 5.0;
+      b.x += 5.0;
+      a.y = b.y = tip.y + (edge == NSMinYEdge ? 6.0 : -6.0);
+    }
+  else
+    {
+      rect.size.width -= 6.0;
+      if (edge == NSMinXEdge) rect.origin.x += 6.0;
+      a.y -= 5.0;
+      b.y += 5.0;
+      a.x = b.x = tip.x + (edge == NSMinXEdge ? 6.0 : -6.0);
+    }
   [[NSColor colorWithCalibratedWhite:0.22 alpha:1.0] set];
   [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:4.0 yRadius:4.0] fill];
+  [arrow moveToPoint:a];
+  [arrow lineToPoint:tip];
+  [arrow lineToPoint:b];
+  [arrow closePath];
+  [arrow fill];
   [title drawInRect:NSInsetRect(rect, 7.0, 4.0)
     withAttributes:[self tooltipTextAttributes]];
 }

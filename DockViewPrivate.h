@@ -162,6 +162,8 @@ DockViewCalibratedBackgroundColor(NSColor *color)
 - (void) scheduleTooltipForHoverIndex: (NSInteger)index;
 - (NSDictionary *) tooltipTextAttributes;
 - (NSRect) tooltipWindowFrame;
+- (NSRectEdge) tooltipArrowEdge;
+- (NSPoint) tooltipArrowTip;
 - (void) drawTooltip;
 - (void) showTooltip: (NSTimer *)timer;
 - (NSArray *) pathsFromPasteboard: (NSPasteboard *)pb;

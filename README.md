@@ -164,7 +164,8 @@ events reuse their images, while icon, badge, label, and size changes refresh
 the affected surfaces. Existing animation preferences remain compatible.
 
 App names appear in compact tooltip windows beside the hovered icon, toward the
-interior of the screen. Labels stay within the screen edges.
+interior of the screen. Labels stay within the screen edges. A small arrow points toward the hovered
+icon, with transparent space around the arrow.
 
 Icons receive clicks, context menus, hover, and drag input directly. Dots,
 tooltips, separators, and the drag insertion marker pass pointer input through. On X11,

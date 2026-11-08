@@ -399,6 +399,12 @@ int main(void)
   XSync((Display *)[GSCurrentServer() serverDevice], False);
   NSCAssert(!ShapeContains(display, (Window)[nameWindow windowRef], ShapeInput, 8, 8),
             @"Name window does not intercept pointer input");
+  NSPoint tip = [view tooltipArrowTip];
+  int arrowY = (int)NSHeight([nameWindow frame]) - 3;
+  NSCAssert(ShapeContains(display, (Window)[nameWindow windowRef], ShapeBounding,
+                          (int)tip.x, arrowY), @"Tooltip has a downward pointer");
+  NSCAssert(!ShapeContains(display, (Window)[nameWindow windowRef], ShapeBounding,
+                           2, arrowY), @"Space beside the pointer is transparent");
   [view hideTooltip];
   NSCAssert(![nameWindow isVisible], @"Name window hides when hover ends");
   /* Section dividers follow pinning and orientation, with no backing panel. */
