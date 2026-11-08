@@ -453,66 +453,34 @@
 
 - (void) dockViewDidActivateItem: (DockItem *)item
 {
+  NSArray *minimized = [self dockView:_dockView minimizedWindowsForItem:item];
+
+  if ([minimized count] || [self dockView:_dockView canRestoreItem:item])
+    {
+      NSMutableArray *windows = [NSMutableArray array];
+      NSUInteger i;
+
+      for (i = 0; i < [minimized count]; i++)
+        [windows addObject:[[minimized objectAtIndex:i] objectForKey:@"window"]];
+      /* Match Restore (or Restore All) including its application fallback. */
+      [self dockView:_dockView restoreWindows:windows forItem:item];
+      [self startActivationWiggleForItem:item];
+      return;
+    }
+
   if ([item kind] == DockItemApplication)
     {
-      NSString *path = [item path];
-      NSArray *processIds;
-      BOOL launched = NO;
-
-      processIds = [self runningProcessIdentifiersForApplicationItem:item];
-      if ([processIds count])
-	{
-	  if ([self activateRunningApplicationWithProcessIdentifiers:processIds])
-	    {
-	      [_x11 drainTransientIconEvents];
-	      [_x11 activateApplicationWithProcessIdentifiers:processIds];
-	      [_x11 drainTransientIconEvents];
-	      [item setState:DockItemRunning];
-	      [self startActivationWiggleForItem:item];
-	      [self refreshDock];
-	      return;
-	    }
-
-	  [_x11 drainTransientIconEvents];
-	  if ([_x11 activateApplicationWithProcessIdentifiers:processIds])
-	    {
-	      [_x11 drainTransientIconEvents];
-	      [item setState:DockItemRunning];
-	      [self startActivationWiggleForItem:item];
-	      [self refreshDock];
-	      return;
-	    }
-	  [_x11 drainTransientIconEvents];
-	}
-
-      if ([item xWindow] && [item state] != DockItemNotRunning)
-	{
-	  [_x11 drainTransientIconEvents];
-	  [_x11 activateWindow:[item xWindow]];
-	  [_x11 drainTransientIconEvents];
-	  [self startActivationWiggleForItem:item];
-	  return;
-	}
-
-      [self rememberLaunchedApplicationPath:path];
-      launched = [self launchApplicationItem:item useIconManager:YES];
+      [self rememberLaunchedApplicationPath:[item path]];
+      if ([self launchApplicationItem:item useIconManager:YES])
+        {
+          [item setState:DockItemRunning];
+          [self startLaunchWiggleForItem:item];
+          [self refreshDock];
+        }
       [_x11 drainTransientIconEvents];
-
-      if (launched)
-	{
-	  [item setState:DockItemRunning];
-	  [self startLaunchWiggleForItem:item];
-	  [self refreshDock];
-	}
-    }
-  else
-    {
-      [_x11 drainTransientIconEvents];
-      [_x11 activateWindow:[item xWindow]];
-      [_x11 drainTransientIconEvents];
-      [self startActivationWiggleForItem:item];
     }
 }
+
 
 - (void) dockViewDidActivateTopIcon
 {

@@ -114,6 +114,24 @@ static void invoke(DockView *view, id<NSMenuItem> entry)
   [view performSelector:[entry action] withObject:entry];
 }
 
+static void doubleClick(DockView *view, DockItem *item)
+{
+  NSPoint point;
+  NSEvent *event;
+
+  [view setFrame:NSMakeRect(0, 0, 280, 84)];
+  [view setHorizontal:YES];
+  [view setItems:[NSArray arrayWithObject:item]];
+  point = [view cellOriginAtIndex:0];
+  point.x += 20.0;
+  point.y += 20.0;
+  point = [view convertPoint:point toView:nil];
+  event = [NSEvent mouseEventWithType:NSLeftMouseDown location:point
+    modifierFlags:0 timestamp:[NSDate timeIntervalSinceReferenceDate]
+    windowNumber:0 context:nil eventNumber:1 clickCount:2 pressure:1.0];
+  [view mouseDown:event];
+}
+
 int main(int argc, char **argv)
 {
   CREATE_AUTORELEASE_POOL(pool);
@@ -142,12 +160,13 @@ int main(int argc, char **argv)
        * without injecting its client window ID into the dock item. */
       [app setPath:[manager executablePathForWindow:target]];
       [app setPinned:YES];
-      if (argc == 3) [controller setForceApplicationRestore:YES];
+      if (argc >= 3) [controller setForceApplicationRestore:YES];
       menu = [view menuForDockItem:app];
       [menu update];
       restore = [menu itemWithTitle:@"Restore"];
       NSCAssert([restore isEnabled], @"Real minimized X11 client is restorable");
-      invoke(view, restore);
+      if (argc >= 4) doubleClick(view, app);
+      else invoke(view, restore);
       for (attempt = 0; attempt < 100; attempt++)
         {
           [manager wmStateForWindow:target state:&state];
@@ -162,6 +181,10 @@ int main(int argc, char **argv)
       RELEASE(pool);
       return 0;
     }
+  doubleClick(view, app);
+  NSCAssert([controller requestedWindow] && [app state] == DockItemRunning,
+            @"Double-click still launches an app that is not running");
+  [app setState:DockItemNotRunning];
   normal = makeWindow(display, NormalState, 0);
   mini = makeWindow(display, IconicState, DockNSMiniWindowMask);
   menu = [view menuForDockItem:app];
@@ -187,6 +210,10 @@ int main(int argc, char **argv)
   NSCAssert(mapped(display, first), @"X11 restore maps the client");
   XUnmapWindow(display, first);
 
+  doubleClick(view, x11);
+  NSCAssert(mapped(display, first), @"Double-click restores an X11 entry");
+  XUnmapWindow(display, first);
+
   [app setState:DockItemRunning];
   second = makeWindow(display, IconicState, 0);
   restore = [[view menuForDockItem:app] itemWithTitle:@"Restore"];
@@ -200,13 +227,18 @@ int main(int argc, char **argv)
             @"Restore All restores all application clients");
   NSCAssert(!mapped(display, normal) && !mapped(display, mini),
             @"Unrelated windows and miniwindow icons stay untouched");
+  XUnmapWindow(display, first);
+  XUnmapWindow(display, second);
+  doubleClick(view, app);
+  NSCAssert(mapped(display, first) && mapped(display, second),
+            @"Double-click restores all application windows");
   [controller setForceApplicationRestore:YES];
   menu = [view menuForDockItem:app];
   [menu update];
   restore = [menu itemWithTitle:@"Restore"];
   NSCAssert([restore isEnabled], @"Running apps restore without a miniwindow list");
   XUnmapWindow(display, first);
-  invoke(view, restore);
+  doubleClick(view, app);
   NSCAssert(mapped(display, first), @"Application activation reaches framed clients");
   NSCAssert(!mapped(display, mini), @"Application restore never reveals miniwindow icons");
   [controller setForceApplicationRestore:NO];

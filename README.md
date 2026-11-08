@@ -138,6 +138,9 @@ contacted through NSWorkspace; X11 clients are raised through the window manager
 If a running external app has no managed windows, its launch command is used to
 request a window. When minimized windows can be identified, a single window is
 restored directly; for several windows, the submenu lists titles and **Restore All**.
+Double-clicking a running app performs the same action as Restore (Restore All
+when several windows are minimized). Apps that are not running still launch.
+The single-click activation preference uses the same behavior.
 Miniwindow suppression remains in effect throughout restoration.
 GNUstep application entries find windows by their running process identifiers;
 individual X11 entries restore their associated window. GNUstep miniwindow icons

@@ -56,4 +56,11 @@ for attempt in $(seq 1 50); do
 done
 xprop -id "$window" WM_STATE | grep -q Iconic
 timeout -k 2 15 "$build_dir/restore-tests" "$window" --application
-echo 'PASS: Restore menu restores Chrome under Window Maker'
+xdotool windowminimize "$window"
+for attempt in $(seq 1 50); do
+  if xprop -id "$window" WM_STATE | grep -q Iconic; then break; fi
+  sleep 0.1
+done
+xprop -id "$window" WM_STATE | grep -q Iconic
+timeout -k 2 15 "$build_dir/restore-tests" "$window" --application --double-click
+echo 'PASS: Restore menu and double-click restore Chrome under Window Maker'
