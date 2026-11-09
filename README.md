@@ -151,6 +151,12 @@ on an isolated X display. Run `sh Tests/run-chrome-restore.sh` to check a real
 Chrome window under Window Maker; it requires `google-chrome`, `wmaker`,
 `wmctrl`, `xdotool`, and Xvfb and uses a temporary Chrome profile.
 
+Run `sh Tests/run-recycler-drag.sh` to exercise a real folder drag from a
+separate GNUstep process across an app icon and onto the Recycler. It repeatedly
+leaves and re-enters the dock with the button held, with tooltips, magnification,
+and native event processing enabled. It uses a temporary folder and trash directory on an isolated display and requires Xvfb,
+Window Maker, `wmctrl`, and `xdotool`.
+
 ### Icon windows and bounce animation
 
 Application icons, the GNUstep tile, the Recycler, and application state dots use
