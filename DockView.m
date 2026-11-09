@@ -49,6 +49,12 @@
       _gnustepIcon = RETAIN([self loadGNUstepIcon]);
       _recyclerIcon = RETAIN([self loadRecyclerIcon]);
       _cellBackgroundImage = RETAIN([self loadCellBackgroundImage]);
+      /* GNUstep's X11 backend releases NSDragPboard on target changes,
+       * including during nested pasteboard-server calls. Keep the named
+       * pasteboard alive for all our icon windows, before AppKit dispatches
+       * any drag events. Holding it only inside a view callback is too late:
+       * NSWindow queries it first. This retains the connection, not its data. */
+      _dragPasteboard = RETAIN([NSPasteboard pasteboardWithName:NSDragPboard]);
       [self registerForDraggedTypes:
 	      [NSArray arrayWithObjects:NSFilenamesPboardType,
 		       NSURLPboardType,
@@ -83,6 +89,7 @@
   DESTROY(_gnustepIcon);
   DESTROY(_recyclerIcon);
   DESTROY(_items);
+  DESTROY(_dragPasteboard);
   DEALLOC;
 }
 

@@ -67,6 +67,7 @@ typedef enum
   id _delegate;
   BOOL _draggingPaths;
   BOOL _performedDragOperation;
+  NSPasteboard *_dragPasteboard;
   NSImage *_gnustepIcon;
   NSImage *_recyclerIcon;
   NSImage *_cellBackgroundImage;

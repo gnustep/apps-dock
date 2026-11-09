@@ -157,6 +157,13 @@ leaves and re-enters the dock with the button held, with tooltips, magnification
 and native event processing enabled. It uses a temporary folder and trash directory on an isolated display and requires Xvfb,
 Window Maker, `wmctrl`, and `xdotool`.
 
+Run `sh Tests/run-recycler-drag.sh --application` to check that dragging an
+`Ink.app` test bundle across the icon windows pins it without crashing. Both
+drag tests drain an autorelease pool between events to exercise normal
+application object lifetimes. DockWM retains the shared drag pasteboard while
+its dock view exists, preventing it from being destroyed as a drag crosses
+icon windows. No GNUstep GUI library changes are required.
+
 ### Icon windows and bounce animation
 
 Application icons, the GNUstep tile, the Recycler, and application state dots use
