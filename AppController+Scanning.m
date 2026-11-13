@@ -168,6 +168,10 @@
 	  [item setState:newState];
 	  changed = YES;
 	}
+      if (running)
+        {
+          changed = [self applyStoredApplicationIconUpdateForItem:item] || changed;
+        }
     }
 
   for (i = 0; i < [processPaths count]; i++)

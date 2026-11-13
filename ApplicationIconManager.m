@@ -237,11 +237,52 @@
     }
 }
 
+/* A PID alone can be reused after exit or reboot. Bind persisted updates to
+ * the executable and Linux process start time within the current boot. */
+- (NSDictionary *) identityForProcessIdentifier: (NSNumber *)identifier
+{
+  NSString *root = [_scanner procFilesystemPath];
+  NSString *path = [_scanner procPathForProcessIdentifierString:
+    [identifier stringValue]];
+  NSString *executable = [_scanner executablePathForProcessIdentifier:identifier];
+  NSString *boot;
+  NSString *stat;
+  NSRange end;
+  NSArray *fields;
+
+  if (![root length] || ![path length] || ![executable length])
+    return nil;
+  boot = [NSString stringWithContentsOfFile:
+    [root stringByAppendingPathComponent:@"sys/kernel/random/boot_id"]];
+  stat = [NSString stringWithContentsOfFile:
+    [path stringByAppendingPathComponent:@"stat"]];
+  end = [stat rangeOfString:@") " options:NSBackwardsSearch];
+  if (![executable length] || ![boot length] || ![stat length] ||
+      end.location == NSNotFound)
+    return nil;
+  /* The command in parentheses may itself contain spaces or parentheses.
+   * Fields after it begin at field 3; starttime is field 22. */
+  fields = [[stat substringFromIndex:NSMaxRange(end)]
+    componentsSeparatedByString:@" "];
+  if ([fields count] <= 19)
+    return nil;
+  return [NSDictionary dictionaryWithObjectsAndKeys:
+    executable, @"executable", boot, @"boot",
+    [fields objectAtIndex:19], @"startTime", nil];
+}
+
+- (NSString *) applicationIconStatePathForProcessIdentifier: (NSNumber *)identifier
+{
+  return [[self x11IconCacheDirectory] stringByAppendingPathComponent:
+    [NSString stringWithFormat:@"icon-manager-%@.plist", identifier]];
+}
+
 - (void) rememberApplicationIcon: (NSImage *)icon
 		      badgeLabel: (NSString *)badgeLabel
 	       processIdentifier: (NSNumber *)processIdentifier
 {
   NSMutableDictionary *update;
+  NSDictionary *identity;
   BOOL updateHasBadge = [badgeLabel length] > 0;
 
   if (![processIdentifier isKindOfClass:[NSNumber class]])
@@ -265,11 +306,51 @@
 	     forKey:@"badgeLabel"];
   [_applicationIconUpdatesByProcessID setObject:update
 					 forKey:processIdentifier];
+
+  identity = [self identityForProcessIdentifier:processIdentifier];
+  if (identity)
+    {
+      NSMutableDictionary *record = [NSMutableDictionary dictionaryWithDictionary:identity];
+      NSString *iconPath = [update objectForKey:@"iconPath"];
+      if (iconPath) [record setObject:iconPath forKey:@"iconPath"];
+      if (badgeLabel) [record setObject:badgeLabel forKey:@"badgeLabel"];
+      [record writeToFile:[self applicationIconStatePathForProcessIdentifier:
+        processIdentifier] atomically:YES];
+    }
 }
 
 - (NSDictionary *) applicationIconUpdateForProcessIdentifier: (NSNumber *)processIdentifier
 {
-  return [_applicationIconUpdatesByProcessID objectForKey:processIdentifier];
+  NSDictionary *update = [_applicationIconUpdatesByProcessID objectForKey:processIdentifier];
+  if (!update)
+    {
+      NSDictionary *identity = [self identityForProcessIdentifier:processIdentifier];
+      NSDictionary *record = [NSDictionary dictionaryWithContentsOfFile:
+        [self applicationIconStatePathForProcessIdentifier:processIdentifier]];
+      if (identity &&
+          [[record objectForKey:@"executable"] isEqual:[identity objectForKey:@"executable"]] &&
+          [[record objectForKey:@"boot"] isEqual:[identity objectForKey:@"boot"]] &&
+          [[record objectForKey:@"startTime"] isEqual:[identity objectForKey:@"startTime"]])
+        {
+          NSMutableDictionary *restored = [NSMutableDictionary dictionary];
+          id badge = [record objectForKey:@"badgeLabel"];
+          id path = [record objectForKey:@"iconPath"];
+          if ([path isKindOfClass:[NSString class]])
+            {
+              NSImage *icon = AUTORELEASE([[NSImage alloc] initWithContentsOfFile:path]);
+              if ([self imageHasVisiblePixels:icon])
+                {
+                  [restored setObject:icon forKey:@"icon"];
+                  [restored setObject:path forKey:@"iconPath"];
+                }
+            }
+          [restored setObject:([badge isKindOfClass:[NSString class]]
+            ? badge : (id)[NSNull null]) forKey:@"badgeLabel"];
+          [_applicationIconUpdatesByProcessID setObject:restored forKey:processIdentifier];
+          update = restored;
+        }
+    }
+  return update;
 }
 
 - (BOOL) applyApplicationIconUpdate: (NSDictionary *)update toItem: (DockItem *)item
@@ -331,8 +412,8 @@
 
   for (i = 0; i < [processIdentifiers count]; i++)
     {
-      NSDictionary *update = [_applicationIconUpdatesByProcessID
-			       objectForKey:[processIdentifiers objectAtIndex:i]];
+      NSDictionary *update = [self applicationIconUpdateForProcessIdentifier:
+        [processIdentifiers objectAtIndex:i]];
 
       if (update)
 	{

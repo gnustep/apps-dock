@@ -122,6 +122,15 @@ icon-manager connections.
 Run `sh Tests/run-icon-manager-preferences.sh` to check defaults, persistence,
 and per-application overrides using an isolated defaults database.
 
+DockWM also saves the last GSIconManager icon or badge update and restores it
+for still-running applications after a dock restart, without waiting for the
+application to send another update. Cached state is matched against the process
+start time, executable, and boot ID so it cannot carry over to a reused PID.
+Stopped applications continue to use their normal icons, and the icon-manager
+preferences still control whether restored updates are applied. Run
+`sh Tests/run-icon-manager-restart.sh` to check restart restoration and rejection
+of stale or corrupt cached state.
+
 Each application's menu includes **Keep In Dock**, enabled by default. Turning
 it off immediately removes the app from the dock, even while it is running,
 and prevents process scans and icon updates from adding it again. The choice
