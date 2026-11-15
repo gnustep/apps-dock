@@ -27,6 +27,7 @@
 
 - (void) setForceApplicationRestore: (BOOL)force;
 - (BOOL) requestedWindow;
+- (NSArray *) minimizedItems;
 
 - (id) initWithManager: (X11DockManager *)manager;
 
@@ -68,6 +69,11 @@
 {
   _requestedWindow = YES;
   return YES;
+}
+
+- (NSArray *) minimizedItems
+{
+  return _minimizedItems;
 }
 
 - (BOOL) requestedWindow
@@ -215,7 +221,49 @@ int main(int argc, char **argv)
   XUnmapWindow(display, first);
 
   [app setState:DockItemRunning];
-  second = makeWindow(display, IconicState, 0);
+  second = makeWindow(display, IconicState, NSTitledWindowMask);
+  XDeleteProperty(display, first, XInternAtom(display, "_GNUSTEP_WM_ATTR", False));
+  XSync(display, False);
+  NSCAssert([[manager minimizedWindows] count] == 2,
+            @"Global scan includes X11 and GNUstep clients, excluding mini icons");
+  NSCAssert([controller updateMinimizedItems], @"New minimized entries detected");
+  NSArray *entries = [controller minimizedItems];
+  NSCAssert([entries count] == 2, @"One entry per minimized window");
+  NSCAssert(![controller updateMinimizedItems], @"Unchanged entries retain identity");
+  NSMutableArray *displayItems = [NSMutableArray arrayWithObjects:app, x11, nil];
+  [displayItems addObjectsFromArray:entries];
+  [view setItems:displayItems];
+  [view setPinnedItemCount:1];
+  [view setMinimizedItemCount:2];
+  for (NSUInteger orientation = 0; orientation < 2; orientation++)
+    {
+      [view setHorizontal:orientation == 1];
+      NSRect separator = [view minimizedSectionSeparatorRect];
+      NSCAssert(!NSIsEmptyRect(separator), @"Minimized section has a separator");
+      NSCAssert(!NSEqualRects(separator, [view sectionSeparatorRectAtEnd:NO]),
+                @"Minimized and undocked sections have separate boundaries");
+      NSCAssert([view reorderInsertionIndexAtPoint:NSMakePoint(10000, -10000)
+                                         fromIndex:1] == 2,
+                @"Application reordering stops before minimized entries");
+    }
+  [view setMinimizedItemCount:0];
+  {
+    Atom atom = XInternAtom(display, "WM_STATE", False);
+    unsigned long values[] = {NormalState, None};
+    XChangeProperty(display, second, atom, atom, 32, PropModeReplace,
+                    (unsigned char *)values, 2);
+    XSync(display, False);
+    NSCAssert([controller updateMinimizedItems] &&
+              [[controller minimizedItems] count] == 1,
+              @"Restored clients leave the minimized section");
+    values[0] = IconicState;
+    XChangeProperty(display, second, atom, atom, 32, PropModeReplace,
+                    (unsigned char *)values, 2);
+    XSync(display, False);
+    NSCAssert([controller updateMinimizedItems] &&
+              [[controller minimizedItems] count] == 2,
+              @"Minimizing again recreates the window entry");
+  }
   restore = [[view menuForDockItem:app] itemWithTitle:@"Restore"];
   NSCAssert([[restore submenu] numberOfItems] == 4,
             @"Application Restore lists two windows and Restore All");
@@ -250,6 +298,14 @@ int main(int argc, char **argv)
   NSCAssert([[manager minimizedWindowsForProcessIdentifiers:
     [NSArray arrayWithObject:[NSNumber numberWithInt:12345]] window:0] count] == 0,
     @"Closed menu targets are safely ignored");
+  NSCAssert([controller updateMinimizedItems] &&
+            [[controller minimizedItems] count] == 0,
+            @"Closed clients disappear from the minimized section");
+  [view setItems:[NSArray arrayWithObject:app]];
+  [view setPinnedItemCount:1];
+  [view setMinimizedItemCount:0];
+  NSCAssert(NSIsEmptyRect([view minimizedSectionSeparatorRect]),
+            @"Empty minimized section has no separator");
   [app setPath:@"/tmp/RestoreTest-executable"];
   XDestroyWindow(display, normal);
   XDestroyWindow(display, frame);

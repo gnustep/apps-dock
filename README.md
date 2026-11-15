@@ -141,6 +141,12 @@ application back onto the dock to enable it again. This is separate from
 Run `sh Tests/run-keep-in-dock.sh` to check the menu, saved visibility, X11
 rediscovery, and restoring an app by dropping it back into the dock.
 
+Minimized X11 and GNUstep windows appear in their own section between undocked
+applications and the Recycler. Each window has an entry that restores only that
+window, using the dock's single- or double-click activation preference. Pinned
+application icons stay in place. Entries disappear when restored or closed, and
+section dividers follow horizontal and vertical dock placement.
+
 Each running application's context menu includes **Restore**. It activates the
 application even when no minimized-window list is available. GNUstep apps are
 contacted through NSWorkspace; X11 clients are raised through the window manager.

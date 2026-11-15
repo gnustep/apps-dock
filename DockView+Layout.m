@@ -151,7 +151,7 @@
       return MIN(index, _pinnedItemCount);
     }
 
-  return index;
+  return MIN(index, [_items count] - _minimizedItemCount);
 }
 
 

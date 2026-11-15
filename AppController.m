@@ -125,6 +125,7 @@
   DESTROY(_launchedApplicationPaths);
   DESTROY(_backgroundColor);
   DESTROY(_items);
+  DESTROY(_minimizedItems);
   DEALLOC;
 }
 

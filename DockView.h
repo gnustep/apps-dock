@@ -100,6 +100,7 @@ typedef enum
   NSUInteger _draggedItemIndex;
   NSUInteger _dropIndex;
   NSUInteger _pinnedItemCount;
+  NSUInteger _minimizedItemCount;
   NSUInteger _lastMouseDownIndex;
   NSTimeInterval _lastMouseDownTime;
   BOOL _singleClickLaunchesApplications;
@@ -107,6 +108,7 @@ typedef enum
 
 - (void) setDelegate: (id)delegate;
 - (void) setItems: (NSArray *)items;
+- (void) setMinimizedItemCount: (NSUInteger)count;
 - (void) setPinnedItemCount: (NSUInteger)count;
 - (void) setBackgroundColor: (NSColor *)color;
 - (void) setBackgroundAlpha: (CGFloat)alpha;

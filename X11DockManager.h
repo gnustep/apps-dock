@@ -108,8 +108,13 @@ typedef enum
 - (void) activateWindow: (unsigned long)xWindow;
 - (BOOL) activateApplicationWithProcessIdentifiers: (NSArray *)processIdentifiers;
 /* Entries contain window (NSNumber) and title (NSString). */
+- (NSArray *) minimizedWindows;
 - (NSArray *) minimizedWindowsForProcessIdentifiers: (NSArray *)processIdentifiers
                                             window: (unsigned long)xWindow;
 - (void) restoreWindow: (unsigned long)xWindow;
 - (void) closeWindow: (unsigned long)xWindow;
+@end
+
+@interface X11DockManager (Images)
+- (NSImage *) iconForWindow: (unsigned long)window;
 @end

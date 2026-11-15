@@ -196,11 +196,18 @@
 - (void) setItems: (NSArray *)items
 {
   [_items setArray:items];
+  _minimizedItemCount = MIN(_minimizedItemCount, [_items count]);
   if (_pinnedItemCount > [_items count])
     {
       _pinnedItemCount = [_items count];
     }
   [self hideTooltip];
+  [self setNeedsDisplay:YES];
+}
+
+- (void) setMinimizedItemCount: (NSUInteger)count
+{
+  _minimizedItemCount = MIN(count, [_items count]);
   [self setNeedsDisplay:YES];
 }
 

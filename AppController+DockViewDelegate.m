@@ -113,7 +113,11 @@
 
 - (void) refreshDock
 {
-  [_dockView setItems:_items];
+  [self updateMinimizedItems];
+  NSMutableArray *displayItems = [NSMutableArray arrayWithArray:_items];
+  [displayItems addObjectsFromArray:_minimizedItems];
+  [_dockView setItems:displayItems];
+  [_dockView setMinimizedItemCount:[_minimizedItems count]];
   [_dockView setPinnedItemCount:[self pinnedApplicationCount]];
   [self applyDockPlacement];
 }

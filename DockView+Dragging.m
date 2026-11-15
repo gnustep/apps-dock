@@ -48,7 +48,7 @@
   CGFloat dy = location.y - _mouseDownPoint.y;
 
   if (_mouseDownItemIndex == NSNotFound ||
-      _mouseDownItemIndex >= [_items count] ||
+      _mouseDownItemIndex >= [_items count] - _minimizedItemCount ||
       (dx * dx + dy * dy) < 16.0)
     {
       return;

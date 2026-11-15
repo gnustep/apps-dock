@@ -190,6 +190,7 @@ DockViewCalibratedBackgroundColor(NSColor *color)
 - (void) drawRecyclerTile;
 - (void) drawDropIndicator;
 - (NSRect) separatorRectBeforeIndex: (NSUInteger)index;
+- (NSRect) minimizedSectionSeparatorRect;
 - (NSRect) sectionSeparatorRectAtEnd: (BOOL)atEnd;
 - (void) drawSeparatorBeforeIndex: (NSUInteger)index;
 - (void) drawDockSeparators;

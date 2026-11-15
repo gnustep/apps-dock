@@ -21,6 +21,36 @@
 
 @implementation AppController (Scanning)
 
+/* Keep window entries separate from application persistence and native dockapps.
+ * A single tree walk covers both GNUstep clients and ordinary X11 clients. */
+- (BOOL) updateMinimizedItems
+{
+  NSMutableArray *items = [NSMutableArray array];
+  for (NSDictionary *info in [_x11 minimizedWindows])
+    {
+      unsigned long window = [[info objectForKey:@"window"] unsignedLongValue];
+      DockItem *entry = nil;
+      for (DockItem *old in _minimizedItems)
+        if ([old xWindow] == window &&
+            [[old title] isEqual:[info objectForKey:@"title"]])
+          { entry = old; break; }
+      if (!entry)
+        {
+          DockItem *owner = [self applicationItemMatchingProcessIdentifier:
+            [info objectForKey:@"pid"]];
+          NSImage *icon = [owner icon];
+          if (!icon) icon = [_x11 iconForWindow:window];
+          entry = [DockItem x11ItemWithTitle:[info objectForKey:@"title"]
+                                     window:window icon:icon hidden:YES];
+        }
+      [items addObject:entry];
+    }
+  if ([_minimizedItems isEqualToArray:items]) return NO;
+  ASSIGNCOPY(_minimizedItems, items);
+  return YES;
+}
+
+
 - (void) performInitialApplicationScans
 {
   [self scanRunningApplications];
@@ -112,6 +142,7 @@
         }
     }
 
+  changed = [self updateMinimizedItems] || changed;
   if (changed)
     {
       [self pruneApplicationIconUpdatesForExitedProcesses];

@@ -44,6 +44,7 @@
 @end
 
 @interface AppController (Private)
+- (BOOL) updateMinimizedItems;
 - (DockPlacement) savedDockPlacement;
 - (NSColor *) savedBackgroundColor;
 - (void) saveBackgroundColor;

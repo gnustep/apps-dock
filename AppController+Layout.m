@@ -24,7 +24,7 @@
 - (NSRect) dockWindowFrameForPlacement: (DockPlacement)placement
 {
   NSRect screenFrame = [[NSScreen mainScreen] frame];
-  NSUInteger cellCount = [_items count] + 2;
+  NSUInteger cellCount = [_items count] + [_minimizedItems count] + 2;
   if ([_preferences savedAllowsGaps])
     for (DockItem *item in _items)
       if ([item isPinned] && [item gapBefore]) cellCount++;

@@ -485,6 +485,13 @@
 }
 
 
+- (NSRect) minimizedSectionSeparatorRect
+{
+  NSUInteger start = [_items count] - _minimizedItemCount;
+  if (!_minimizedItemCount || start == _pinnedItemCount) return NSZeroRect;
+  return [self separatorRectBeforeIndex:start];
+}
+
 - (void) drawSeparatorBeforeIndex: (NSUInteger)index
 {
   [[NSColor colorWithCalibratedWhite:1.0 alpha:0.55] set];
@@ -499,6 +506,8 @@
       return;
     }
 
+  [[NSColor colorWithCalibratedWhite:1.0 alpha:0.55] set];
+  NSRectFill([self minimizedSectionSeparatorRect]);
   [self drawSeparatorBeforeIndex:_pinnedItemCount];
   [self drawSeparatorBeforeIndex:[_items count]];
 }

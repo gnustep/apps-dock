@@ -40,6 +40,7 @@
   DockApplicationStore *_applicationStore;
   ApplicationIconManager *_applicationIconManager;
   NSMutableArray *_items;
+  NSArray *_minimizedItems;
   NSMutableSet *_launchedApplicationPaths;
   X11DockManager *_x11;
   NSTimer *_x11EventTimer;

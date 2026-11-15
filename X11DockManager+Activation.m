@@ -87,14 +87,15 @@
        * but never offer the frame itself as a restore target. */
       pid = [self processIdentifierForWindow:window];
       if (!attr.override_redirect &&
-          (window == target || (pid > 0 && [processIdentifiers
+          ((!processIdentifiers && target == None) || window == target || (pid > 0 && [processIdentifiers
             containsObject:[NSNumber numberWithInt:pid]])) &&
           [self wmStateForWindow:window state:&state] && state == IconicState)
         {
           NSString *title = [self titleForWindow:window];
           if (![title length]) title = @"Untitled Window";
           [windows addObject:[NSDictionary dictionaryWithObjectsAndKeys:
-            [NSNumber numberWithUnsignedLong:window], @"window", title, @"title", nil]];
+            [NSNumber numberWithUnsignedLong:window], @"window", title, @"title",
+            [NSNumber numberWithInt:pid], @"pid", nil]];
         }
       [self collectMinimizedWindows:windows processIdentifiers:processIdentifiers
                              window:target underWindow:window];
@@ -102,6 +103,15 @@
   if (children) XFree(children);
 }
 
+
+- (NSArray *) minimizedWindows
+{
+  NSMutableArray *windows = [NSMutableArray array];
+  if (_display)
+    [self collectMinimizedWindows:windows processIdentifiers:nil window:None
+                     underWindow:DefaultRootWindow((Display *)_display)];
+  return windows;
+}
 
 - (NSArray *) minimizedWindowsForProcessIdentifiers: (NSArray *)processIdentifiers
                                             window: (unsigned long)xWindow
