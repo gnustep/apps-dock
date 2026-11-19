@@ -84,6 +84,7 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
   if (self)
     {
       _dockView = view;
+      _windowPreviews = [[NSMutableDictionary alloc] init];
       _knownWindows = [NSMutableSet new];
       _iconWindowsByProcessID = [NSMutableDictionary new];
       _iconImageDataByProcessID = [NSMutableDictionary new];
@@ -114,6 +115,7 @@ static int X11DockManagerHandleError(Display *display, XErrorEvent *event)
   DESTROY(_dockAppWindows);
   DESTROY(_iconConnection);
   DESTROY(_knownWindows);
+  DESTROY(_windowPreviews);
   DESTROY(_scanWindows);
   DEALLOC;
 }

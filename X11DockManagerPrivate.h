@@ -39,6 +39,9 @@
 #define X11DockManagerEventScanInterval 1.0
 
 @interface X11DockManager (Private)
+
+- (void) captureActiveWindowPreview;
+- (NSImage *) capturePreviewForWindow: (Window)window;
 - (id) initWithDockView: (DockView *)view;
 - (void) dealloc;
 - (void) setDelegate: (id)delegate;

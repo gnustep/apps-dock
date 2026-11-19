@@ -107,6 +107,68 @@ static Window makeWindow(Display *display, long state, unsigned long style)
   return window;
 }
 
+static void checkWindowPreviews(Display *display, RestoreManager *manager,
+                                RestoreController *controller)
+{
+  Window window = makeWindow(display, NormalState, 0);
+  Atom active = XInternAtom(display, "_NET_ACTIVE_WINDOW", False);
+  Atom stateAtom = XInternAtom(display, "WM_STATE", False);
+  unsigned long states[] = {IconicState, None};
+  NSImage *preview;
+  NSBitmapImageRep *rep;
+  NSUInteger pixel[4];
+
+  XSetWindowBackground(display, window, WhitePixel(display, DefaultScreen(display)));
+  XMapRaised(display, window);
+  XClearWindow(display, window);
+  XChangeProperty(display, DefaultRootWindow(display), active, XA_WINDOW, 32,
+                  PropModeReplace, (unsigned char *)&window, 1);
+  XSync(display, False);
+  [manager processPendingEvents];
+  preview = [manager previewForWindow:window];
+  NSCAssert(preview && NSEqualSizes([preview size], NSMakeSize(48, 48)),
+            @"Active window is captured in a 48x48 image");
+  rep = [[preview representations] objectAtIndex:0];
+  [rep getPixel:pixel atX:24 y:0];
+  NSCAssert(pixel[3] == 0, @"Landscape preview has transparent padding");
+  [rep getPixel:pixel atX:24 y:8];
+  NSCAssert(pixel[0] == 255 && pixel[3] == 255,
+            @"Window content is fitted proportionally, not replaced by an app icon");
+
+  XUnmapWindow(display, window);
+  XChangeProperty(display, window, stateAtom, stateAtom, 32, PropModeReplace,
+                  (unsigned char *)states, 2);
+  XSync(display, False);
+  NSCAssert(![manager capturePreviewForWindow:window],
+            @"Unmapped windows cannot overwrite the cached preview");
+  [controller updateMinimizedItems];
+  NSCAssert([[[controller minimizedItems] objectAtIndex:0] icon] == preview,
+            @"Minimized dock entry uses its captured window preview");
+
+  states[0] = NormalState;
+  XChangeProperty(display, window, stateAtom, stateAtom, 32, PropModeReplace,
+                  (unsigned char *)states, 2);
+  XResizeWindow(display, window, 200, 300);
+  XSetWindowBackground(display, window, BlackPixel(display, DefaultScreen(display)));
+  XMapRaised(display, window);
+  XClearWindow(display, window);
+  XSync(display, False);
+  [controller updateMinimizedItems];
+  [manager captureActiveWindowPreview];
+  preview = [manager previewForWindow:window];
+  rep = [[preview representations] objectAtIndex:0];
+  [rep getPixel:pixel atX:0 y:24];
+  NSCAssert(pixel[3] == 0, @"Portrait preview has transparent side padding");
+  [rep getPixel:pixel atX:8 y:24];
+  NSCAssert(pixel[0] == 0 && pixel[3] == 255,
+            @"Restored windows refresh their preview, including black content");
+  XDestroyWindow(display, window);
+  XDeleteProperty(display, DefaultRootWindow(display), active);
+  XSync(display, False);
+  [manager processPendingEvents];
+  NSCAssert(![manager previewForWindow:window], @"Destroyed window preview removed");
+}
+
 static BOOL mapped(Display *display, Window window)
 {
   XWindowAttributes attr;
@@ -187,6 +249,7 @@ int main(int argc, char **argv)
       RELEASE(pool);
       return 0;
     }
+  checkWindowPreviews(display, manager, controller);
   doubleClick(view, app);
   NSCAssert([controller requestedWindow] && [app state] == DockItemRunning,
             @"Double-click still launches an app that is not running");

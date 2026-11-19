@@ -62,6 +62,8 @@ typedef enum
   unsigned long _hostWindow;
   NSRect _hostWindowFrame;
   NSMutableSet *_knownWindows;
+  NSMutableDictionary *_windowPreviews;
+  NSTimeInterval _lastPreviewTime;
   NSConnection *_iconConnection;
   NSMutableDictionary *_iconWindowsByProcessID;
   NSMutableDictionary *_iconImageDataByProcessID;
@@ -116,5 +118,7 @@ typedef enum
 @end
 
 @interface X11DockManager (Images)
+
+- (NSImage *) previewForWindow: (unsigned long)window;
 - (NSImage *) iconForWindow: (unsigned long)window;
 @end

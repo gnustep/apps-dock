@@ -21,6 +21,126 @@
 
 @implementation X11DockManager (Images)
 
+/* XGetImage cannot read an unmapped client. Retain a small snapshot while the
+ * active window is visible, independently of the application's icon cache. */
+- (void) captureActiveWindowPreview
+{
+  Display *display = (Display *)_display;
+  Window window = None;
+  Atom type;
+  int format, revert;
+  unsigned long count, remaining;
+  unsigned char *data = NULL;
+  long state;
+
+  if (!display) return;
+  if (XGetWindowProperty(display, DefaultRootWindow(display),
+        XInternAtom(display, "_NET_ACTIVE_WINDOW", False), 0, 1, False,
+        XA_WINDOW, &type, &format, &count, &remaining, &data) == Success &&
+      type == XA_WINDOW && format == 32 && count == 1)
+    window = *(Window *)data;
+  if (data) XFree(data);
+  if (window == None)
+    XGetInputFocus(display, &window, &revert);
+
+  /* Focus can belong to a child widget rather than the managed client. */
+  while (window != None && window != PointerRoot &&
+         window != DefaultRootWindow(display))
+    {
+      Window root, parent, *children = NULL;
+      unsigned int childCount;
+      if ([self wmStateForWindow:window state:&state])
+        {
+          if (state == NormalState &&
+              ![self windowIsGNUstepIconOrMiniWindow:window] &&
+              ![self windowIsRegisteredIconWindow:window])
+            {
+              NSImage *preview = [self capturePreviewForWindow:window];
+              if (preview)
+                {
+                  XWindowAttributes attr;
+                  [_windowPreviews setObject:preview forKey:
+                    [NSNumber numberWithUnsignedLong:window]];
+                  /* Reparented clients no longer report destruction at root. */
+                  if (XGetWindowAttributes(display, window, &attr))
+                    XSelectInput(display, window,
+                                 attr.your_event_mask | StructureNotifyMask);
+                }
+            }
+          return;
+        }
+      if (!XQueryTree(display, window, &root, &parent, &children, &childCount))
+        return;
+      if (children) XFree(children);
+      window = parent;
+    }
+}
+
+- (NSImage *) capturePreviewForWindow: (Window)window
+{
+  Display *display = (Display *)_display;
+  XWindowAttributes attr;
+  XImage *source;
+  NSMutableData *data;
+  unsigned char *pixels;
+  int width, height, left, top, x, y;
+
+  if (!display || !window) return nil;
+  [self clearX11Error];
+  if (!XGetWindowAttributes(display, window, &attr) ||
+      [self x11ErrorOccurred] || attr.map_state != IsViewable ||
+      attr.class != InputOutput || attr.width <= 0 || attr.height <= 0 ||
+      (unsigned long)attr.width * attr.height > 16777216UL ||
+      attr.visual->class != TrueColor)
+    return nil;
+
+  [self clearX11Error];
+  source = XGetImage(display, window, 0, 0, attr.width, attr.height,
+                     AllPlanes, ZPixmap);
+  if (!source || [self x11ErrorOccurred])
+    {
+      if (source) XDestroyImage(source);
+      return nil;
+    }
+
+  width = attr.width >= attr.height ? 48 : MAX(1, 48 * attr.width / attr.height);
+  height = attr.height >= attr.width ? 48 : MAX(1, 48 * attr.height / attr.width);
+  left = (48 - width) / 2;
+  top = (48 - height) / 2;
+  data = [NSMutableData dataWithLength:48 * 48 * 4];
+  pixels = [data mutableBytes];
+  for (y = 0; y < height; y++)
+    for (x = 0; x < width; x++)
+      {
+        unsigned int red = 0, green = 0, blue = 0;
+        int sx, sy;
+        unsigned char *dst = pixels + ((top + y) * 48 + left + x) * 4;
+        /* Average sixteen samples per output pixel without converting a
+         * full-size window into an AppKit bitmap. */
+        for (sy = 0; sy < 4; sy++)
+          for (sx = 0; sx < 4; sx++)
+            {
+              unsigned long pixel = XGetPixel(source,
+                ((x * 8 + sx * 2 + 1) * attr.width) / (width * 8),
+                ((y * 8 + sy * 2 + 1) * attr.height) / (height * 8));
+              red += [self componentFromPixel:pixel mask:source->red_mask];
+              green += [self componentFromPixel:pixel mask:source->green_mask];
+              blue += [self componentFromPixel:pixel mask:source->blue_mask];
+            }
+        dst[0] = red / 16;
+        dst[1] = green / 16;
+        dst[2] = blue / 16;
+        dst[3] = 255;
+      }
+  XDestroyImage(source);
+  return [self imageFromData:data width:48 height:48];
+}
+
+- (NSImage *) previewForWindow: (unsigned long)window
+{
+  return [_windowPreviews objectForKey:[NSNumber numberWithUnsignedLong:window]];
+}
+
 - (unsigned char) componentFromPixel: (unsigned long)pixel mask: (unsigned long)mask
 {
   unsigned long value;

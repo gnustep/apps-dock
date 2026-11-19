@@ -90,6 +90,9 @@
           {
             NSNumber *key = [NSNumber numberWithUnsignedLong:event.xdestroywindow.window];
             [_knownWindows removeObject:key];
+            [_windowPreviews removeObjectForKey:key];
+            [eventWindows removeObject:key];
+            [iconEventWindows removeObject:key];
             [_dockAppWindows removeObject:key];
             [self removeWindow:(unsigned int)event.xdestroywindow.window];
             if ([_dockedWindowFrames objectForKey:key])
@@ -196,6 +199,11 @@
     }
 
   now = [NSDate timeIntervalSinceReferenceDate];
+  if (now - _lastPreviewTime >= 0.5)
+    {
+      _lastPreviewTime = now;
+      [self captureActiveWindowPreview];
+    }
   if (_scanPending && XPending(display) == 0 &&
       now - _lastEventScanTime >= X11DockManagerEventScanInterval)
     {

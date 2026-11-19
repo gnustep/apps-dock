@@ -38,7 +38,8 @@
         {
           DockItem *owner = [self applicationItemMatchingProcessIdentifier:
             [info objectForKey:@"pid"]];
-          NSImage *icon = [owner icon];
+          NSImage *icon = [_x11 previewForWindow:window];
+          if (!icon) icon = [owner icon];
           if (!icon) icon = [_x11 iconForWindow:window];
           entry = [DockItem x11ItemWithTitle:[info objectForKey:@"title"]
                                      window:window icon:icon hidden:YES];
