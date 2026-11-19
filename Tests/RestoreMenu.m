@@ -169,6 +169,48 @@ static void checkWindowPreviews(Display *display, RestoreManager *manager,
   NSCAssert(![manager previewForWindow:window], @"Destroyed window preview removed");
 }
 
+/* An inactive terminal can be minimized directly from its title bar. */
+static void checkInactiveWindowPreview(Display *display, RestoreManager *manager,
+                                       RestoreController *controller)
+{
+  Window window = makeWindow(display, NormalState, 0);
+  Atom stateAtom = XInternAtom(display, "WM_STATE", False);
+  unsigned long states[] = {IconicState, None};
+  NSImage *preview;
+  NSBitmapImageRep *rep;
+  NSUInteger pixel[4];
+
+  XDeleteProperty(display, DefaultRootWindow(display),
+                  XInternAtom(display, "_NET_ACTIVE_WINDOW", False));
+  XSetInputFocus(display, PointerRoot, RevertToPointerRoot, CurrentTime);
+  XSetWindowBackground(display, window, WhitePixel(display, DefaultScreen(display)));
+  XMapRaised(display, window);
+  XClearWindow(display, window);
+  XSync(display, False);
+  [manager scanClientWindow:window];
+  preview = [manager previewForWindow:window];
+  NSCAssert(preview != nil, @"Discovery captures a visible inactive client");
+  rep = [[preview representations] objectAtIndex:0];
+  [rep getPixel:pixel atX:24 y:24];
+  NSCAssert(pixel[0] == 255 && pixel[3] == 255,
+            @"Inactive preview contains the window content");
+
+  XUnmapWindow(display, window);
+  XChangeProperty(display, window, stateAtom, stateAtom, 32, PropModeReplace,
+                  (unsigned char *)states, 2);
+  XSync(display, False);
+  [manager scanKnownWindow:window];
+  [controller updateMinimizedItems];
+  NSCAssert([[[controller minimizedItems] objectAtIndex:0] icon] == preview,
+            @"Minimizing without activation uses the discovery preview");
+  XDestroyWindow(display, window);
+  XSync(display, False);
+  [manager processPendingEvents];
+  NSCAssert(![manager previewForWindow:window],
+            @"Inactive client destruction removes its preview");
+  [controller updateMinimizedItems];
+}
+
 static BOOL mapped(Display *display, Window window)
 {
   XWindowAttributes attr;
@@ -250,6 +292,7 @@ int main(int argc, char **argv)
       return 0;
     }
   checkWindowPreviews(display, manager, controller);
+  checkInactiveWindowPreview(display, manager, controller);
   doubleClick(view, app);
   NSCAssert([controller requestedWindow] && [app state] == DockItemRunning,
             @"Double-click still launches an app that is not running");

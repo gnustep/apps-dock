@@ -41,6 +41,7 @@
 @interface X11DockManager (Private)
 
 - (void) captureActiveWindowPreview;
+- (void) cachePreviewForWindow: (Window)window;
 - (NSImage *) capturePreviewForWindow: (Window)window;
 - (id) initWithDockView: (DockView *)view;
 - (void) dealloc;

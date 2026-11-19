@@ -471,6 +471,9 @@
   NSString *title;
   NSString *path;
 
+  if (![self previewForWindow:window])
+    [self cachePreviewForWindow:window];
+
   if ([_knownWindows containsObject:key])
     {
       return;

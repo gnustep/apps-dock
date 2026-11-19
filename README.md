@@ -145,7 +145,9 @@ Minimized X11 and GNUstep windows appear in their own section between undocked
 applications and the Recycler. Each window has an entry that restores only that
 window, using the dock's single- or double-click activation preference. Pinned
 application icons stay in place. Minimized entries use a preview of the active
-window fitted proportionally into a transparent 48×48 image. The dock refreshes
+window fitted proportionally into a transparent 48×48 image. Discovery also
+caches visible inactive windows, so they can be minimized without first being
+activated. The dock refreshes
 the active window snapshot every half second while it is visible and retains it
 when minimized. Windows without an available snapshot (including those already
 minimized when the dock starts) fall back to their application icon. Entries disappear when restored or closed, and

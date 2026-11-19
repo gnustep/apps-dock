@@ -51,28 +51,37 @@
       unsigned int childCount;
       if ([self wmStateForWindow:window state:&state])
         {
-          if (state == NormalState &&
-              ![self windowIsGNUstepIconOrMiniWindow:window] &&
-              ![self windowIsRegisteredIconWindow:window])
-            {
-              NSImage *preview = [self capturePreviewForWindow:window];
-              if (preview)
-                {
-                  XWindowAttributes attr;
-                  [_windowPreviews setObject:preview forKey:
-                    [NSNumber numberWithUnsignedLong:window]];
-                  /* Reparented clients no longer report destruction at root. */
-                  if (XGetWindowAttributes(display, window, &attr))
-                    XSelectInput(display, window,
-                                 attr.your_event_mask | StructureNotifyMask);
-                }
-            }
+          [self cachePreviewForWindow:window];
           return;
         }
       if (!XQueryTree(display, window, &root, &parent, &children, &childCount))
         return;
       if (children) XFree(children);
       window = parent;
+    }
+}
+
+/* Discovery also seeds inactive clients, which may be minimized without ever
+ * becoming the active window (for example, another Prompt terminal). */
+- (void) cachePreviewForWindow: (Window)window
+{
+  Display *display = (Display *)_display;
+  long state;
+  NSImage *preview;
+
+  if (!display || ![self wmStateForWindow:window state:&state] ||
+      state != NormalState ||
+      [self windowIsGNUstepIconOrMiniWindow:window] ||
+      [self windowIsRegisteredIconWindow:window]) return;
+  preview = [self capturePreviewForWindow:window];
+  if (preview)
+    {
+      XWindowAttributes attr;
+      [_windowPreviews setObject:preview forKey:
+        [NSNumber numberWithUnsignedLong:window]];
+      /* Reparented clients no longer report destruction at root. */
+      if (XGetWindowAttributes(display, window, &attr))
+        XSelectInput(display, window, attr.your_event_mask | StructureNotifyMask);
     }
 }
 

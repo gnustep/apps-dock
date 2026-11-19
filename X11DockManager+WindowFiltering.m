@@ -522,6 +522,8 @@ static Window WindowProperty(Display *display, Window window, Atom property)
       [_knownWindows removeObject:key];
       return;
     }
+  if (![self previewForWindow:window])
+    [self cachePreviewForWindow:window];
   if ([_delegate respondsToSelector:
                    @selector(x11DockManagerDidUpdateWindow:hidden:icon:)])
     {
